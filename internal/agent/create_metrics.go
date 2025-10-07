@@ -1,10 +1,10 @@
 package agent
 
-import models "github.com/iamamatkazin/metrics.git/internal/model"
+import "github.com/iamamatkazin/metrics.git/internal/model"
 
 func createMetrics() map[string]map[string]any {
 	return map[string]map[string]any{
-		models.Gauge: {
+		model.Gauge: {
 			"Alloc":         0,
 			"BuckHashSys":   0,
 			"Frees":         0,
@@ -34,7 +34,7 @@ func createMetrics() map[string]map[string]any {
 			"TotalAlloc":    0,
 			"RandomValue":   0,
 		},
-		models.Counter: {
+		model.Counter: {
 			"PollCount": 0,
 		},
 	}
