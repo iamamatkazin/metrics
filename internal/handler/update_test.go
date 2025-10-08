@@ -19,8 +19,7 @@ type want struct {
 
 func TestHandler_updateMetric(t *testing.T) {
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
+		name    string
 		request string
 		mType   string
 		val     string

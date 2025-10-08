@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -31,7 +30,8 @@ loop:
 
 		case <-tmRun.C:
 			go func() {
-				http.ListenAndServe(fmt.Sprintf(":%d", cfg.Server.Port), router)
+				slog.Info("Запуск сервера")
+				http.ListenAndServe(cfg.Server.Host, router)
 			}()
 		}
 	}

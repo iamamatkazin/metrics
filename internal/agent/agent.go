@@ -51,7 +51,7 @@ func (a *Agent) Run(ctx context.Context) {
 }
 
 func (a *Agent) reportMetrics(ctx context.Context) (err error) {
-	urlBase := fmt.Sprintf("http://%s:%d/update", a.cfg.Server.Host, a.cfg.Server.Port)
+	urlBase := fmt.Sprintf("http://%s/update", a.cfg.Server.Host)
 
 	for key, metrics := range a.metrics {
 		for name, value := range metrics {

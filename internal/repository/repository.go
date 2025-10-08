@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"encoding/json"
-	"fmt"
 	"sync"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
@@ -46,6 +44,7 @@ func (s *MemStorage) UpdateMetric(metric model.Metric) {
 		s.metrics[metric.ID] = &metric
 	} else {
 		if val.MType == model.Gauge {
+			// из-за ошибки в авто-тестах на платформе, метрики с типом Gauge не суммируются
 			// value := *val.Value + *metric.Value
 			val.Value = metric.Value // &value
 		} else {
@@ -53,10 +52,6 @@ func (s *MemStorage) UpdateMetric(metric model.Metric) {
 			val.Delta = &delta
 		}
 	}
-
-	b, _ := json.Marshal(s.metrics)
-	q, _ := json.Marshal(metric)
-	fmt.Println(string(b), "|||", string(q))
 }
 
 func (s *MemStorage) ListMetrics() []model.Metric {

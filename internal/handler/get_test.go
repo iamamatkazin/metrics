@@ -35,18 +35,19 @@ func TestHandler_getMetric(t *testing.T) {
 	}{
 		{
 			name:    "simple test #1",
-			request: "/value/gauge/testCounter",
-			mType:   "gauge",
-			val:     "100",
+			request: "/value/counter/testCounter",
+			mType:   model.Counter,
+			val:     "200",
 			want:    want{statusCode: 200, contentType: "text/plain; charset=utf-8"},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := New()
-			prepareMetric(h, model.Gauge, "testCounter")
-			prepareMetric(h, model.Counter, "test")
-			prepareMetric(h, model.Gauge, "testCounter")
+			prepareMetric(h, model.Counter, "testCounter")
+			prepareMetric(h, model.Gauge, "test")
+			prepareMetric(h, model.Counter, "testCounter")
 
 			r := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()

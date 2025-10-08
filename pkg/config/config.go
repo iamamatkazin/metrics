@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"flag"
+	"time"
+)
 
 type Config struct {
 	Client Client
@@ -15,19 +18,25 @@ type Client struct {
 
 type Server struct {
 	Host string
-	Port int
 }
 
 func New() *Config {
-	return &Config{
+	host := flag.String("a", "localhost:8080", "a host")
+	report := flag.Int("r", 10, "a report")
+	pool := flag.Int("p", 2, "a pool")
+
+	flag.Parse()
+
+	c := &Config{
 		Client: Client{
 			Timeout:        time.Second * 5,
-			PollInterval:   time.Second * 2,
-			ReportInterval: time.Second * 10,
+			PollInterval:   time.Second * time.Duration(*pool),
+			ReportInterval: time.Second * time.Duration(*report),
 		},
 		Server: Server{
-			Host: "localhost",
-			Port: 8080,
+			Host: *host,
 		},
 	}
+
+	return c
 }
