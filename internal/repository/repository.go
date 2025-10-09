@@ -44,9 +44,7 @@ func (s *MemStorage) UpdateMetric(metric model.Metric) {
 		s.metrics[metric.ID] = &metric
 	} else {
 		if val.MType == model.Gauge {
-			// из-за ошибки в авто-тестах на платформе, метрики с типом Gauge не суммируются
-			// value := *val.Value + *metric.Value
-			val.Value = metric.Value // &value
+			val.Value = metric.Value
 		} else {
 			delta := *val.Delta + *metric.Delta
 			val.Delta = &delta

@@ -1,39 +1,47 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/handler"
 	"github.com/iamamatkazin/metrics.git/pkg/config"
 )
 
 func main() {
-	cfg := config.New()
-	router := handler.New().Router
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	chSsignal := make(chan os.Signal, 1)
-	signal.Notify(chSsignal, os.Interrupt, syscall.SIGTERM)
+	cfg := config.NewServer()
 
-	tmRun := time.NewTimer(0)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-loop:
-	for {
-		select {
-		case <-chSsignal:
-			slog.Info("Начало остановки сервера...")
-			break loop
+	server := &http.Server{
+		Addr:    cfg.Host,
+		Handler: handler.New().Router,
+	}
+	exit := make(chan struct{})
 
-		case <-tmRun.C:
-			go func() {
-				slog.Info("Запуск сервера")
-				http.ListenAndServe(cfg.Server.Host, router)
-			}()
+	go func() {
+		slog.Info("Запуск сервера")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Ошибка запуска сервера:", slog.Any("error", err))
+			close(exit)
 		}
+	}()
+
+	select {
+	case <-quit:
+		server.Shutdown(ctx)
+		cancel()
+
+	case <-exit:
+		os.Exit(2)
 	}
 
 	slog.Info("Выключение сервера")

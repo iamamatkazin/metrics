@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/agent"
 	"github.com/iamamatkazin/metrics.git/pkg/config"
@@ -16,31 +15,24 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.New()
+	cfg := config.NewClient()
 
-	chSsignal := make(chan os.Signal, 1)
-	signal.Notify(chSsignal, os.Interrupt, syscall.SIGTERM)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	chExit := make(chan struct{})
-	tmRun := time.NewTimer(0)
+	exit := make(chan struct{})
 
-loop:
-	for {
-		select {
-		case <-chSsignal:
-			slog.Info("Начало остановки агента...")
-			cancel()
+	go func() {
+		agent.New(cfg).Run(ctx)
+		close(exit)
+	}()
 
-		case <-chExit:
-			cancel()
-			break loop
-
-		case <-tmRun.C:
-			go func() {
-				agent.New(cfg).Run(ctx)
-				close(chExit)
-			}()
-		}
+	select {
+	case <-quit:
+		slog.Info("Начало остановки агента...")
+		cancel()
+	case <-exit:
+		cancel()
 	}
 
 	slog.Info("Выключение агента")

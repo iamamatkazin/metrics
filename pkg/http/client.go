@@ -11,21 +11,21 @@ import (
 
 type Client struct {
 	*http.Client
-	cfg *config.Config
+	cfg *config.Client
 }
 
-func New(cfg *config.Config) *Client {
+func New(cfg *config.Client) *Client {
 	return &Client{
 		cfg: cfg,
 		Client: &http.Client{
-			Timeout:   cfg.Client.Timeout,
+			Timeout:   cfg.Timeout,
 			Transport: &http.Transport{},
 		},
 	}
 }
 
 func (c *Client) Post(ctx context.Context, url, contentType string) error {
-	ctx, cancel := context.WithTimeout(ctx, c.cfg.Client.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
 	defer cancel()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, http.NoBody)

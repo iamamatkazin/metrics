@@ -12,11 +12,11 @@ import (
 
 type Agent struct {
 	client  *pkghttp.Client
-	cfg     *config.Config
+	cfg     *config.Client
 	metrics map[string]map[string]any
 }
 
-func New(cfg *config.Config) *Agent {
+func New(cfg *config.Client) *Agent {
 	slog.Info("Запуск агента")
 	return &Agent{
 		cfg:     cfg,
@@ -28,30 +28,29 @@ func New(cfg *config.Config) *Agent {
 func (a *Agent) Run(ctx context.Context) {
 	pollCount := 0
 
-	tiPool := time.NewTicker(a.cfg.Client.PollInterval)
-	defer tiPool.Stop()
+	pollTicker := time.NewTicker(a.cfg.PollInterval)
+	defer pollTicker.Stop()
 
-	tiReport := time.NewTicker(a.cfg.Client.ReportInterval)
-	defer tiReport.Stop()
+	reportTicker := time.NewTicker(a.cfg.ReportInterval)
+	defer reportTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 
-		case <-tiPool.C:
+		case <-pollTicker.C:
 			pollCount++
 			a.poolMetrics(pollCount)
 
-		case <-tiReport.C:
+		case <-reportTicker.C:
 			a.reportMetrics(ctx)
 		}
-
 	}
 }
 
 func (a *Agent) reportMetrics(ctx context.Context) (err error) {
-	urlBase := fmt.Sprintf("http://%s/update", a.cfg.Server.Host)
+	urlBase := fmt.Sprintf("http://%s/update", a.cfg.ServerAddress)
 
 	for key, metrics := range a.metrics {
 		for name, value := range metrics {
