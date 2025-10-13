@@ -6,17 +6,17 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/iamamatkazin/metrics.git/pkg/config"
+	"github.com/iamamatkazin/metrics.git/pkg/config/agent"
 	pkghttp "github.com/iamamatkazin/metrics.git/pkg/http"
 )
 
 type Agent struct {
 	client  *pkghttp.Client
-	cfg     *config.Client
+	cfg     *agent.Config
 	metrics map[string]map[string]any
 }
 
-func New(cfg *config.Client) *Agent {
+func New(cfg *agent.Config) *Agent {
 	slog.Info("Запуск агента")
 	return &Agent{
 		cfg:     cfg,
@@ -28,10 +28,10 @@ func New(cfg *config.Client) *Agent {
 func (a *Agent) Run(ctx context.Context) {
 	pollCount := 0
 
-	pollTicker := time.NewTicker(a.cfg.PollInterval)
+	pollTicker := time.NewTicker(time.Second * time.Duration(a.cfg.PollInterval))
 	defer pollTicker.Stop()
 
-	reportTicker := time.NewTicker(a.cfg.ReportInterval)
+	reportTicker := time.NewTicker(time.Second * time.Duration(a.cfg.ReportInterval))
 	defer reportTicker.Stop()
 
 	for {
@@ -44,13 +44,15 @@ func (a *Agent) Run(ctx context.Context) {
 			a.poolMetrics(pollCount)
 
 		case <-reportTicker.C:
-			a.reportMetrics(ctx)
+			if err := a.reportMetrics(ctx); err != nil {
+				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
+			}
 		}
 	}
 }
 
 func (a *Agent) reportMetrics(ctx context.Context) (err error) {
-	urlBase := fmt.Sprintf("http://%s/update", a.cfg.ServerAddress)
+	urlBase := fmt.Sprintf("http://%s/update", a.cfg.Address)
 
 	for key, metrics := range a.metrics {
 		for name, value := range metrics {

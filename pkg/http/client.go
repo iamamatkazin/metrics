@@ -6,15 +6,15 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/iamamatkazin/metrics.git/pkg/config"
+	"github.com/iamamatkazin/metrics.git/pkg/config/agent"
 )
 
 type Client struct {
 	*http.Client
-	cfg *config.Client
+	cfg *agent.Config
 }
 
-func New(cfg *config.Client) *Client {
+func New(cfg *agent.Config) *Client {
 	return &Client{
 		cfg: cfg,
 		Client: &http.Client{
