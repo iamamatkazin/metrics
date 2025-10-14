@@ -1,7 +1,9 @@
 package http
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,11 +26,24 @@ func New(cfg *agent.Config) *Client {
 	}
 }
 
-func (c *Client) Post(ctx context.Context, url, contentType string) error {
+func (c *Client) Post(ctx context.Context, url, contentType string, data any) (err error) {
+	var (
+		request *http.Request
+		body    []byte
+	)
+
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
 	defer cancel()
 
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, http.NoBody)
+	if data == nil {
+		request, err = http.NewRequestWithContext(ctx, http.MethodPost, url, http.NoBody)
+	} else {
+		body, err = json.Marshal(data)
+		if err != nil {
+			return err
+		}
+		request, err = http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	}
 	if err != nil {
 		return err
 	}

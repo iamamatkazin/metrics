@@ -1,8 +1,7 @@
 package handler
 
 import (
-	"io"
-	"log/slog"
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,24 +14,32 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 		MType: chi.URLParam(r, "type"),
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
 	if err := metric.Validate(); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, err.Error())
+		writeText(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := metric.Normalize(chi.URLParam(r, "val")); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, err.Error())
+		writeText(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	h.storage.UpdateMetric(metric)
-	w.WriteHeader(http.StatusOK)
+	writeText(w, http.StatusOK, http.StatusText(http.StatusOK))
+}
 
-	if _, err := w.Write([]byte(http.StatusText(http.StatusOK))); err != nil {
-		slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
+func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
+	var metric model.Metric
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
 	}
+
+	if err := metric.ValidateJSON(); err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	h.storage.UpdateMetric(metric)
+	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
 }
