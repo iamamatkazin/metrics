@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -25,5 +25,8 @@ func (h *Handler) getMetric(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(code)
-	io.WriteString(w, message)
+
+	if _, err := w.Write([]byte(message)); err != nil {
+		slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
+	}
 }

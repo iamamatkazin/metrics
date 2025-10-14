@@ -2,7 +2,7 @@ package handler
 
 import (
 	"fmt"
-	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
@@ -39,5 +39,8 @@ func (h *Handler) listMetrics(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, html)
+
+	if _, err := w.Write([]byte(html)); err != nil {
+		slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
+	}
 }

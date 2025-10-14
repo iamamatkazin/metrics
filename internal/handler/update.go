@@ -2,6 +2,7 @@ package handler
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -30,5 +31,8 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 
 	h.storage.UpdateMetric(metric)
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, http.StatusText(http.StatusOK))
+
+	if _, err := w.Write([]byte(http.StatusText(http.StatusOK))); err != nil {
+		slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
+	}
 }
