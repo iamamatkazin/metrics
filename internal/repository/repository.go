@@ -46,8 +46,13 @@ func (s *MemStorage) UpdateMetric(metric model.Metric) {
 		if val.MType == model.Gauge {
 			val.Value = metric.Value
 		} else {
-			delta := *val.Delta + *metric.Delta
-			val.Delta = &delta
+			if metric.Delta != nil {
+				delta := *val.Delta + *metric.Delta
+				val.Delta = &delta
+			} else if metric.Value != nil {
+				delta := *val.Delta + int(*metric.Value)
+				val.Delta = &delta
+			}
 		}
 	}
 }

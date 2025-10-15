@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
@@ -37,7 +36,5 @@ func (h *Handler) listMetrics(w http.ResponseWriter, r *http.Request) {
 		</body>
 	</html>`, li)
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, html)
+	writeText(w, http.StatusOK, html)
 }
