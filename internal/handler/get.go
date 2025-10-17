@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"io"
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -23,7 +23,37 @@ func (h *Handler) getMetric(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(code)
-	io.WriteString(w, message)
+	writeText(w, code, message)
+}
+
+func (h *Handler) getMetricJSON(w http.ResponseWriter, r *http.Request) {
+	var metric model.Metric
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := metric.Validate(); err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if value := h.storage.GetMetric(metric.ID); value != nil {
+		if metric.MType == model.Gauge {
+			metric.Value = value.Value
+		} else {
+			metric.Delta = value.Delta
+		}
+
+		body, err := json.Marshal(metric)
+		if err != nil {
+			writeText(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		writeJSON(w, http.StatusOK, body)
+	} else {
+		writeText(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+		// writeJSON(w, http.StatusNotFound, []byte("{\"error\": \"Not Found\"}"))
+	}
 }

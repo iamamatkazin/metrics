@@ -20,12 +20,28 @@ type Metric struct {
 	MType string   `json:"type"`
 	Delta *int     `json:"delta,omitempty"`
 	Value *float64 `json:"value,omitempty"`
-	Hash  string   `json:"hash,omitempty"`
+	Hash  string   `json:"-"`
 }
 
 func (m *Metric) Validate() error {
 	if m.MType != Gauge && m.MType != Counter {
 		return fmt.Errorf("неизвестный тип метрики: %s", m.MType)
+	}
+
+	return nil
+}
+
+func (m *Metric) ValidateJSON() error {
+	if m.MType != Gauge && m.MType != Counter {
+		return fmt.Errorf("неизвестный тип метрики: %s", m.MType)
+	}
+
+	if m.MType == Gauge && m.Value == nil {
+		return fmt.Errorf("отсутствует значение метрики %s", m.ID)
+	}
+
+	if m.MType == Counter && m.Delta == nil && m.Value == nil {
+		return fmt.Errorf("отсутствует значение метрики %s", m.ID)
 	}
 
 	return nil
