@@ -36,5 +36,5 @@ func (h *Handler) listMetrics(w http.ResponseWriter, r *http.Request) {
 		</body>
 	</html>`, li)
 
-	writeText(w, http.StatusOK, html)
+	writeHTML(w, http.StatusOK, html)
 }

@@ -3,7 +3,6 @@ package handler
 import (
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -28,6 +27,7 @@ func New() *Handler {
 
 func (h *Handler) listRoute() {
 	h.Router.Use(middlewareLog)
+	h.Router.Use(middlewareGzip)
 	h.Router.Get("/", h.listMetrics)
 	h.Router.Get("/value/{type}/{id}", h.getMetric)
 	h.Router.Post("/update/{type}/{id}/{val}", h.updateMetric)
@@ -52,28 +52,6 @@ func (h *Handler) listRoute() {
 	})
 }
 
-func middlewareLog(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-
-		rw := &responseWriter{
-			ResponseWriter: w,
-			data:           &responseData{},
-		}
-
-		next.ServeHTTP(rw, r)
-
-		duration := time.Since(start)
-		slog.Info("Запрос",
-			slog.String("uri", r.RequestURI),
-			slog.String("method", r.Method),
-			slog.Duration("duration", duration),
-			slog.Int("status", rw.data.status),
-			slog.Int("size", rw.data.size),
-		)
-	})
-}
-
 func writeText(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
@@ -88,6 +66,15 @@ func writeJSON(w http.ResponseWriter, status int, body []byte) {
 	w.WriteHeader(status)
 
 	if _, err := w.Write(body); err != nil {
+		slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
+	}
+}
+
+func writeHTML(w http.ResponseWriter, status int, html string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+
+	if _, err := w.Write([]byte(html)); err != nil {
 		slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
 	}
 }
