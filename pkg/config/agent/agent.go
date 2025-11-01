@@ -15,9 +15,9 @@ type Config struct {
 }
 
 func New() (*Config, error) {
-	address := flag.String("a", "localhost:8080", "a address")
-	report := flag.Int("r", 10, "a report")
-	pool := flag.Int("p", 2, "a pool")
+	address := flag.String("a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
+	report := flag.Int("r", 10, "частота отправки метрик на сервер")
+	pool := flag.Int("p", 2, "частота опроса метрик")
 	flag.Parse()
 
 	cfg := &Config{

@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/assert/v2"
+	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,7 +59,7 @@ func TestHandler_updateMetric(t *testing.T) {
 			ctx.URLParams.Add("val", tt.val)
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, ctx))
 
-			h := New()
+			h, _ := New(context.Background(), &server.Config{FileStoragePath: "./storage.json"})
 			h.updateMetric(w, r)
 			result := w.Result()
 

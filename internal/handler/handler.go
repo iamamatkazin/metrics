@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/iamamatkazin/metrics.git/internal/repository"
+	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
 type Handler struct {
@@ -14,15 +16,20 @@ type Handler struct {
 	Router  *chi.Mux
 }
 
-func New() *Handler {
+func New(ctx context.Context, cfg *server.Config) (*Handler, error) {
+	storage, err := repository.New(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	h := &Handler{
-		storage: repository.New(),
+		storage: storage,
 	}
 
 	h.Router = chi.NewRouter()
 	h.listRoute()
 
-	return h
+	return h, nil
 }
 
 func (h *Handler) listRoute() {

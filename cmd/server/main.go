@@ -22,13 +22,20 @@ func main() {
 		os.Exit(2)
 	}
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	app, err := handler.New(ctx, cfg)
+	if err != nil {
+		slog.Error("Ошибка создания сервера:", slog.Any("error", err))
+		os.Exit(2)
+	}
 
 	server := &http.Server{
 		Addr:    cfg.Address,
-		Handler: handler.New().Router,
+		Handler: app.Router,
 	}
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
 	exit := make(chan struct{})
 
 	go func() {
