@@ -1,0 +1,35 @@
+package server
+
+import (
+	"flag"
+
+	"github.com/caarlos0/env/v11"
+)
+
+type Config struct {
+	Address         string `env:"ADDRESS"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	StoreInterval   int    `env:"STORE_INTERVAL"`
+	Restore         bool   `env:"RESTORE"`
+}
+
+func New() (*Config, error) {
+	address := flag.String("a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
+	interval := flag.Int("i", 300, "интервал времени в секундах, по истечении которого текущие показания сервера сохраняются на диск")
+	path := flag.String("f", "./storage.json", "путь до файла, куда сохраняются текущие значения")
+	restore := flag.Bool("r", true, "булево значение (true/false), определяющее, следует ли загружать ранее сохранённые значения из указанного файла при старте сервера")
+	flag.Parse()
+
+	cfg := &Config{
+		Address:         *address,
+		StoreInterval:   *interval,
+		FileStoragePath: *path,
+		Restore:         *restore,
+	}
+
+	if err := env.Parse(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}

@@ -9,22 +9,33 @@ import (
 	"syscall"
 
 	"github.com/iamamatkazin/metrics.git/internal/handler"
-	"github.com/iamamatkazin/metrics.git/pkg/config"
+	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.NewServer()
+	cfg, err := server.New()
+	if err != nil {
+		slog.Error("Ошибка чтения конфигурации:", slog.Any("error", err))
+		os.Exit(2)
+	}
+
+	app, err := handler.New(ctx, cfg)
+	if err != nil {
+		slog.Error("Ошибка создания сервера:", slog.Any("error", err))
+		os.Exit(2)
+	}
+
+	server := &http.Server{
+		Addr:    cfg.Address,
+		Handler: app.Router,
+	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	server := &http.Server{
-		Addr:    cfg.Host,
-		Handler: handler.New().Router,
-	}
 	exit := make(chan struct{})
 
 	go func() {
@@ -37,7 +48,9 @@ func main() {
 
 	select {
 	case <-quit:
-		server.Shutdown(ctx)
+		if err := server.Shutdown(ctx); err != nil {
+			slog.Error("Ошибка остановки сервера:", slog.Any("error", err))
+		}
 		cancel()
 
 	case <-exit:

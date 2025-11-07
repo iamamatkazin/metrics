@@ -8,14 +8,18 @@ import (
 	"syscall"
 
 	"github.com/iamamatkazin/metrics.git/internal/agent"
-	"github.com/iamamatkazin/metrics.git/pkg/config"
+	cfgagent "github.com/iamamatkazin/metrics.git/pkg/config/agent"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg := config.NewClient()
+	cfg, err := cfgagent.New()
+	if err != nil {
+		slog.Error("Ошибка чтения конфигурации:", slog.Any("error", err))
+		os.Exit(2)
+	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)

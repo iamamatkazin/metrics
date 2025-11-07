@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/assert/v2"
 	"github.com/iamamatkazin/metrics.git/internal/model"
+	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +45,7 @@ func TestHandler_getMetric(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := New()
+			h, _ := New(context.Background(), &server.Config{FileStoragePath: "./storage.json"})
 			prepareMetric(h, model.Counter, "testCounter")
 			prepareMetric(h, model.Gauge, "test")
 			prepareMetric(h, model.Counter, "testCounter")

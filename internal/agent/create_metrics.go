@@ -2,8 +2,8 @@ package agent
 
 import "github.com/iamamatkazin/metrics.git/internal/model"
 
-func createMetrics() map[string]map[string]any {
-	return map[string]map[string]any{
+func createMetrics() map[string]map[string]float64 {
+	return map[string]map[string]float64{
 		model.Gauge: {
 			"Alloc":         0,
 			"BuckHashSys":   0,
