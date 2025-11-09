@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -28,18 +29,28 @@ func prepareMetric(h *Handler, mType, name string) {
 }
 func TestHandler_getMetric(t *testing.T) {
 	tests := []struct {
-		name    string
-		request string
-		mType   string
-		val     string
-		want    want
+		name       string
+		metricName string
+		request    string
+		mType      string
+		val        string
+		want       want
 	}{
 		{
-			name:    "simple test #1",
-			request: "/value/counter/testCounter",
-			mType:   model.Counter,
-			val:     "200",
-			want:    want{statusCode: 200, contentType: "text/plain; charset=utf-8"},
+			name:       "simple test #1",
+			request:    "/value/counter/testCounter",
+			metricName: "testCounter",
+			mType:      model.Counter,
+			val:        "200",
+			want:       want{statusCode: 200, contentType: "text/plain; charset=utf-8"},
+		},
+		{
+			name:       "simple test #2",
+			request:    "/value/gauge/test",
+			metricName: "test",
+			mType:      model.Gauge,
+			val:        "100",
+			want:       want{statusCode: 200, contentType: "text/plain; charset=utf-8"},
 		},
 	}
 
@@ -55,7 +66,7 @@ func TestHandler_getMetric(t *testing.T) {
 
 			ctx := chi.NewRouteContext()
 			ctx.URLParams.Add("type", tt.mType)
-			ctx.URLParams.Add("id", "testCounter")
+			ctx.URLParams.Add("id", tt.metricName)
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, ctx))
 
 			h.getMetric(w, r)
@@ -70,6 +81,64 @@ func TestHandler_getMetric(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.val, string(got))
+		})
+	}
+}
+
+func TestHandler_getMetricJSON(t *testing.T) {
+	tests := []struct {
+		name       string
+		metricName string
+		request    string
+		data       string
+		value      float64
+		want       want
+	}{
+		{
+			name:       "simple test #1",
+			request:    "/value/",
+			data:       "{\"id\":\"testCounter\",\"type\":\"gauge\"}",
+			metricName: "testCounter",
+			value:      100,
+			want:       want{statusCode: 200, contentType: "application/json", body: "{\"id\":\"testCounter\",\"type\":\"gauge\",\"value\":100}"},
+		},
+		// {
+		// 	name:       "simple test #2",
+		// 	request:    "/value/",
+		// 	data:       "{\"id\":\"testCounter\",\"type\":\"gauge\"}",
+		// 	metricName: "testCounter",
+		// 	value:      100,
+		// },
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, err := New(context.Background(), &server.Config{FileStoragePath: "./storage.json"})
+			if err != nil {
+				t.Fatalf("could not construct receiver type: %v", err)
+			}
+
+			h.storage.UpdateMetric(model.Metric{
+				ID:    tt.metricName,
+				MType: model.Gauge,
+				Value: &tt.value,
+			})
+
+			r := httptest.NewRequest(http.MethodGet, tt.request, strings.NewReader(tt.data))
+			w := httptest.NewRecorder()
+
+			h.getMetricJSON(w, r)
+
+			result := w.Result()
+
+			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
+
+			got, err := io.ReadAll(result.Body)
+			require.NoError(t, err)
+			err = result.Body.Close()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.body, string(got))
 		})
 	}
 }

@@ -85,3 +85,7 @@ func writeHTML(w http.ResponseWriter, status int, html string) {
 		slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
 	}
 }
+
+func (h *Handler) Shutdown() {
+	h.storage.Shutdown()
+}

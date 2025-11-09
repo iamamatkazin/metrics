@@ -2,14 +2,12 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"log/slog"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
+	"github.com/iamamatkazin/metrics.git/internal/repository/filestorage"
 	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
@@ -17,29 +15,32 @@ type Storager interface {
 	GetMetric(id string) *model.Metric
 	UpdateMetric(metric model.Metric)
 	ListMetrics() []model.Metric
+	Shutdown()
 }
 
 type MemStorage struct {
 	metrics map[string]*model.Metric
 	sync.RWMutex
-	cfg  *server.Config
-	file *os.File
+	cfg      *server.Config
+	fileStor *filestorage.Storage
 }
 
 func New(ctx context.Context, cfg *server.Config) (*MemStorage, error) {
-	file, err := os.OpenFile(cfg.FileStoragePath, os.O_RDWR|os.O_CREATE, 0666)
+	fileStor, err := filestorage.New(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	s := &MemStorage{
-		metrics: make(map[string]*model.Metric),
-		cfg:     cfg,
-		file:    file,
+		metrics:  make(map[string]*model.Metric),
+		cfg:      cfg,
+		fileStor: fileStor,
 	}
 
 	if cfg.Restore {
-		s.loadDump()
+		if err = s.fileStor.LoadDump(s.metrics); err != nil {
+			return nil, err
+		}
 	}
 
 	go func() {
@@ -49,9 +50,9 @@ func New(ctx context.Context, cfg *server.Config) (*MemStorage, error) {
 	return s, nil
 }
 
-func (s *MemStorage) Close() {
-	if s.file != nil {
-		s.file.Close()
+func (s *MemStorage) Shutdown() {
+	if s.fileStor != nil {
+		s.fileStor.Close()
 	}
 }
 
@@ -69,35 +70,12 @@ func (s *MemStorage) saveDump(ctx context.Context) {
 			return
 		case <-storeIntervalTimer.C:
 			s.Lock()
-			if err := s.saveToFile(); err != nil {
+			if err := s.fileStor.SaveToFile(s.metrics); err != nil {
 				slog.Error("ошибка сохранения метрик в файл", slog.Any("error", err))
 			}
 			s.Unlock()
 		}
 	}
-}
-
-func (s *MemStorage) loadDump() {
-	if err := json.NewDecoder(s.file).Decode(&s.metrics); err != nil {
-		if err != io.EOF {
-			slog.Error("ошибка чтения метрик из файла", slog.Any("error", err))
-		}
-	}
-}
-
-func (s *MemStorage) saveToFile() error {
-	if err := s.file.Truncate(0); err != nil {
-		return err
-	}
-	if _, err := s.file.Seek(0, 0); err != nil {
-		return err
-	}
-
-	if err := json.NewEncoder(s.file).Encode(s.metrics); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *MemStorage) GetMetric(id string) *model.Metric {
@@ -134,7 +112,7 @@ func (s *MemStorage) UpdateMetric(metric model.Metric) {
 	}
 
 	if s.cfg.StoreInterval == 0 {
-		if err := s.saveToFile(); err != nil {
+		if err := s.fileStor.SaveToFile(s.metrics); err != nil {
 			slog.Error("ошибка сохранения метрик в файл", slog.Any("error", err))
 		}
 	}

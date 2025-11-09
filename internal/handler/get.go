@@ -54,6 +54,5 @@ func (h *Handler) getMetricJSON(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, body)
 	} else {
 		writeText(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
-		// writeJSON(w, http.StatusNotFound, []byte("{\"error\": \"Not Found\"}"))
 	}
 }
