@@ -1,21 +1,20 @@
 package filestorage
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"os"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
-	"github.com/iamamatkazin/metrics.git/pkg/config/server"
+	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
 type Storage struct {
-	cfg  *server.Config
+	cfg  *sconfig.Config
 	file *os.File
 }
 
-func New(ctx context.Context, cfg *server.Config) (*Storage, error) {
+func New(cfg *sconfig.Config) (*Storage, error) {
 	file, err := os.OpenFile(cfg.FileStoragePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, err

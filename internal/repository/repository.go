@@ -8,6 +8,7 @@ import (
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
 	"github.com/iamamatkazin/metrics.git/internal/repository/filestorage"
+	"github.com/iamamatkazin/metrics.git/internal/repository/postgresql"
 	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
@@ -15,6 +16,7 @@ type Storager interface {
 	GetMetric(id string) *model.Metric
 	UpdateMetric(metric model.Metric)
 	ListMetrics() []model.Metric
+	PingDB(ctx context.Context) error
 	Shutdown()
 }
 
@@ -23,10 +25,16 @@ type MemStorage struct {
 	sync.RWMutex
 	cfg      *server.Config
 	fileStor *filestorage.Storage
+	dbStor   *postgresql.Storage
 }
 
 func New(ctx context.Context, cfg *server.Config) (*MemStorage, error) {
-	fileStor, err := filestorage.New(ctx, cfg)
+	fileStor, err := filestorage.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	dbStor, err := postgresql.New(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -35,6 +43,7 @@ func New(ctx context.Context, cfg *server.Config) (*MemStorage, error) {
 		metrics:  make(map[string]*model.Metric),
 		cfg:      cfg,
 		fileStor: fileStor,
+		dbStor:   dbStor,
 	}
 
 	if cfg.Restore {
@@ -53,6 +62,10 @@ func New(ctx context.Context, cfg *server.Config) (*MemStorage, error) {
 func (s *MemStorage) Shutdown() {
 	if s.fileStor != nil {
 		s.fileStor.Close()
+	}
+
+	if s.dbStor != nil {
+		s.dbStor.Close()
 	}
 }
 
@@ -128,4 +141,8 @@ func (s *MemStorage) ListMetrics() []model.Metric {
 	}
 
 	return list
+}
+
+func (s *MemStorage) PingDB(ctx context.Context) error {
+	return s.dbStor.Ping(ctx)
 }

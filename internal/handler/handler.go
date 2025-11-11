@@ -35,6 +35,7 @@ func New(ctx context.Context, cfg *server.Config) (*Handler, error) {
 func (h *Handler) listRoute() {
 	h.Router.Use(middlewareLog)
 	h.Router.Use(middlewareGzip)
+	h.Router.Get("/ping", h.pingDB)
 	h.Router.Get("/", h.listMetrics)
 	h.Router.Get("/value/{type}/{id}", h.getMetric)
 	h.Router.Post("/update/{type}/{id}/{val}", h.updateMetric)
