@@ -2,54 +2,58 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
 	"github.com/iamamatkazin/metrics.git/internal/repository/filestorage"
+	"github.com/iamamatkazin/metrics.git/internal/repository/memstorage"
 	"github.com/iamamatkazin/metrics.git/internal/repository/postgresql"
 	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
 type Storager interface {
 	GetMetric(id string) *model.Metric
-	UpdateMetric(metric model.Metric)
+	UpdateMetric(ctx context.Context, metric model.Metric) error
 	ListMetrics() []model.Metric
 	PingDB(ctx context.Context) error
-	Shutdown()
+	Shutdown(ctx context.Context)
 }
 
-type MemStorage struct {
-	metrics map[string]*model.Metric
-	sync.RWMutex
+type Storage struct {
 	cfg      *server.Config
+	memStor  *memstorage.Storage
 	fileStor *filestorage.Storage
 	dbStor   *postgresql.Storage
 }
 
-func New(ctx context.Context, cfg *server.Config) (*MemStorage, error) {
+func New(ctx context.Context, cfg *server.Config) (*Storage, error) {
 	fileStor, err := filestorage.New(cfg)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("cfg.DatabaseDSN", cfg.DatabaseDSN)
 
 	dbStor, err := postgresql.New(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	s := &MemStorage{
-		metrics:  make(map[string]*model.Metric),
-		cfg:      cfg,
-		fileStor: fileStor,
-		dbStor:   dbStor,
-	}
-
+	metrics := make(map[string]*model.Metric)
 	if cfg.Restore {
-		if err = s.fileStor.LoadDump(s.metrics); err != nil {
+		if err = fileStor.LoadDump(metrics); err != nil {
 			return nil, err
 		}
+	}
+
+	mem := memstorage.New(metrics)
+	s := &Storage{
+		cfg:      cfg,
+		memStor:  mem,
+		fileStor: fileStor,
+		dbStor:   dbStor,
 	}
 
 	go func() {
@@ -59,17 +63,25 @@ func New(ctx context.Context, cfg *server.Config) (*MemStorage, error) {
 	return s, nil
 }
 
-func (s *MemStorage) Shutdown() {
+func (s *Storage) Shutdown(ctx context.Context) {
+	metrics := s.memStor.GetMetrics()
+
 	if s.fileStor != nil {
+		s.saveToFile(metrics)
 		s.fileStor.Close()
 	}
 
 	if s.dbStor != nil {
+		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+
+		s.dbStor.UpdateMetrics(ctx, metrics)
 		s.dbStor.Close()
+		slog.Info("UpdateMetrics")
 	}
 }
 
-func (s *MemStorage) saveDump(ctx context.Context) {
+func (s *Storage) saveDump(ctx context.Context) {
 	storeIntervalTimer := time.NewTimer(time.Second * time.Duration(s.cfg.StoreInterval))
 	defer storeIntervalTimer.Stop()
 
@@ -82,67 +94,42 @@ func (s *MemStorage) saveDump(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-storeIntervalTimer.C:
-			s.Lock()
-			if err := s.fileStor.SaveToFile(s.metrics); err != nil {
-				slog.Error("ошибка сохранения метрик в файл", slog.Any("error", err))
-			}
-			s.Unlock()
+			metrics := s.memStor.GetMetrics()
+			s.saveToFile(metrics)
+			s.dbStor.UpdateMetrics(ctx, metrics)
 		}
 	}
 }
 
-func (s *MemStorage) GetMetric(id string) *model.Metric {
-	s.RLock()
-	defer s.RUnlock()
-
-	val, ok := s.metrics[id]
-	if !ok {
-		return nil
+func (s *Storage) saveToFile(metrics map[string]*model.Metric) {
+	if err := s.fileStor.SaveToFile(metrics); err != nil {
+		slog.Error("ошибка сохранения метрик в файл", slog.Any("error", err))
 	}
-
-	return val
 }
 
-func (s *MemStorage) UpdateMetric(metric model.Metric) {
-	s.Lock()
-	defer s.Unlock()
+func (s *Storage) GetMetric(id string) *model.Metric {
+	return s.memStor.GetMetric(id)
+}
 
-	val, ok := s.metrics[metric.ID]
-	if !ok {
-		s.metrics[metric.ID] = &metric
-	} else {
-		if val.MType == model.Gauge {
-			val.Value = metric.Value
-		} else {
-			if metric.Delta != nil {
-				delta := *val.Delta + *metric.Delta
-				val.Delta = &delta
-			} else if metric.Value != nil {
-				delta := *val.Delta + int(*metric.Value)
-				val.Delta = &delta
-			}
-		}
-	}
+func (s *Storage) UpdateMetric(ctx context.Context, metric model.Metric) error {
+	val := s.memStor.UpdateMetric(metric)
 
 	if s.cfg.StoreInterval == 0 {
-		if err := s.fileStor.SaveToFile(s.metrics); err != nil {
-			slog.Error("ошибка сохранения метрик в файл", slog.Any("error", err))
-		}
-	}
-}
-
-func (s *MemStorage) ListMetrics() []model.Metric {
-	s.RLock()
-	defer s.RUnlock()
-
-	list := make([]model.Metric, 0, len(s.metrics))
-	for _, val := range s.metrics {
-		list = append(list, *val)
+		metrics := s.memStor.GetMetrics()
+		s.saveToFile(metrics)
 	}
 
-	return list
+	if err := s.dbStor.UpdateMetric(ctx, val); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *MemStorage) PingDB(ctx context.Context) error {
+func (s *Storage) ListMetrics() []model.Metric {
+	return s.memStor.ListMetrics()
+}
+
+func (s *Storage) PingDB(ctx context.Context) error {
 	return s.dbStor.Ping(ctx)
 }

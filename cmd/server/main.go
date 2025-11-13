@@ -27,7 +27,6 @@ func main() {
 		slog.Error("Ошибка создания сервера:", slog.Any("error", err))
 		os.Exit(2)
 	}
-	defer app.Shutdown()
 
 	server := &http.Server{
 		Addr:    cfg.Address,
@@ -49,6 +48,8 @@ func main() {
 
 	select {
 	case <-quit:
+		app.Shutdown(ctx)
+
 		if err := server.Shutdown(ctx); err != nil {
 			slog.Error("Ошибка остановки сервера:", slog.Any("error", err))
 		}

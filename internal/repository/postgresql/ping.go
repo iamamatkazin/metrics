@@ -6,6 +6,10 @@ import (
 )
 
 func (s *Storage) Ping(ctx context.Context) error {
+	if s.db == nil {
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 

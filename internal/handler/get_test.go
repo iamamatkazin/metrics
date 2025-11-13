@@ -117,7 +117,7 @@ func TestHandler_getMetricJSON(t *testing.T) {
 				t.Fatalf("could not construct receiver type: %v", err)
 			}
 
-			h.storage.UpdateMetric(model.Metric{
+			h.storage.UpdateMetric(context.Background(), model.Metric{
 				ID:    tt.metricName,
 				MType: model.Gauge,
 				Value: &tt.value,
