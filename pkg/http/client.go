@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/iamamatkazin/metrics.git/pkg/config/agent"
 )
@@ -36,13 +37,13 @@ func (c *Client) Post(ctx context.Context, url, contentType string, data any) (e
 	defer cancel()
 
 	if data == nil {
-		request, err = http.NewRequestWithContext(ctx, http.MethodPost, url, http.NoBody)
+		request, err = newRequestWithContext(ctx, http.MethodPost, url, http.NoBody)
 	} else {
 		body, err = json.Marshal(data)
 		if err != nil {
 			return err
 		}
-		request, err = http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		request, err = newRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	}
 	if err != nil {
 		return err
@@ -68,4 +69,27 @@ func (c *Client) Post(ctx context.Context, url, contentType string, data any) (e
 	}
 
 	return nil
+}
+
+func newRequestWithContext(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+	timerRetriable := time.NewTimer(0)
+	count := 0
+
+	for {
+		select {
+		case <-ctx.Done():
+		case <-timerRetriable.C:
+			request, err := http.NewRequestWithContext(ctx, method, url, body)
+			if err != nil {
+				if count > 3 {
+					return nil, err
+				}
+
+				timerRetriable.Reset(time.Duration(2*count+1) * time.Second)
+				count++
+			}
+
+			return request, nil
+		}
+	}
 }

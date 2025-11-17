@@ -3,8 +3,6 @@ package postgresql
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"fmt"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
@@ -41,8 +39,6 @@ func (s *Storage) UpdateMetrics(ctx context.Context, metrics []model.Metric) err
 	}
 
 	for i := range metrics {
-		b, _ := json.Marshal(metrics[i])
-		fmt.Println(i, "!!!!!!!", string(b))
 		if err := s.updateMetric(ctx, tx, metrics[i]); err != nil {
 			tx.Rollback()
 			return err
@@ -78,9 +74,6 @@ func (s *Storage) updateMetric(ctx context.Context, tx *sql.Tx, metric model.Met
 				delta = metrics.delta + EXCLUDED.delta
 		`
 	}
-
-	b, _ := json.Marshal(metric)
-	fmt.Println("@@@", string(b))
 
 	if _, err := tx.ExecContext(ctx, query, metric.ID, metric.MType, metric.Value, metric.Delta); err != nil {
 		return err

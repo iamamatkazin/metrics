@@ -3,8 +3,6 @@ package postgresql
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"fmt"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
@@ -40,7 +38,5 @@ func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, erro
 		metric.Delta = &d
 	}
 
-	b, _ := json.Marshal(metric)
-	fmt.Println("(s *Storage) GetMetric ", string(b))
 	return &metric, nil
 }
