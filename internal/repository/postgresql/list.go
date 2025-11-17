@@ -1,8 +1,8 @@
 package postgresql
 
-import "github.com/iamamatkazin/metrics.git/internal/model"
+// import "github.com/iamamatkazin/metrics.git/internal/model"
 
-func (s *Storage) ListMetrics() []model.Metric {
+// func (s *Storage) ListMetrics() []model.Metric {
 
-	return nil
-}
+// 	return nil
+// }

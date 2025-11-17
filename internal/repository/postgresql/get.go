@@ -3,11 +3,17 @@ package postgresql
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
-func (s *Storage) GetMetric(ctx context.Context, id string) *model.Metric {
+func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, error) {
+	if s.db == nil {
+		return nil, nil
+	}
+
 	var (
 		metric model.Metric
 		val    sql.NullFloat64
@@ -20,18 +26,21 @@ func (s *Storage) GetMetric(ctx context.Context, id string) *model.Metric {
 	err := row.Scan(&metric.ID, &metric.MType, &val, &delta)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil
+			return nil, nil
 		}
-		return nil
+		return nil, err
 	}
 
 	if val.Valid {
 		metric.Value = &val.Float64
 	}
+
 	if delta.Valid {
 		d := int(delta.Int64)
 		metric.Delta = &d
 	}
 
-	return &metric
+	b, _ := json.Marshal(metric)
+	fmt.Println("(s *Storage) GetMetric ", string(b))
+	return &metric, nil
 }

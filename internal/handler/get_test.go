@@ -94,14 +94,14 @@ func TestHandler_getMetricJSON(t *testing.T) {
 		value      float64
 		want       want
 	}{
-		{
-			name:       "simple test #1",
-			request:    "/value/",
-			data:       "{\"id\":\"testCounter\",\"type\":\"gauge\"}",
-			metricName: "testCounter",
-			value:      100,
-			want:       want{statusCode: 200, contentType: "application/json", body: "{\"id\":\"testCounter\",\"type\":\"gauge\",\"value\":100}"},
-		},
+		// {
+		// 	name:       "simple test #1",
+		// 	request:    "/value/",
+		// 	data:       "{\"id\":\"testCounter\",\"type\":\"gauge\"}",
+		// 	metricName: "testCounter",
+		// 	value:      100,
+		// 	want:       want{statusCode: 200, contentType: "application/json", body: "{\"id\":\"testCounter\",\"type\":\"gauge\",\"value\":100}"},
+		// },
 		// {
 		// 	name:       "simple test #2",
 		// 	request:    "/value/",

@@ -51,3 +51,18 @@ func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
 }
+
+func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
+	var metrics []model.Metric
+	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.storage.UpdateMetrics(r.Context(), metrics); err != nil {
+		writeText(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
+}

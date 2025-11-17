@@ -48,6 +48,10 @@ func (a *Agent) Run(ctx context.Context) {
 			if err := a.reportMetrics(ctx); err != nil {
 				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
 			}
+
+			if err := a.sendMetrics(ctx); err != nil {
+				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
+			}
 		}
 	}
 }
@@ -88,6 +92,23 @@ func (a *Agent) sendMetricJSON(ctx context.Context, urlBase, key, name string, v
 	}
 
 	if err := a.client.Post(ctx, urlBase, "application/json", metric); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *Agent) sendMetrics(ctx context.Context) (err error) {
+	urlBase := fmt.Sprintf("http://%s/updates/", a.cfg.Address)
+
+	list := make([]model.Metric, 0, len(a.metrics[model.Gauge])+len(a.metrics[model.Counter]))
+	for key, metrics := range a.metrics {
+		for name, value := range metrics {
+			list = append(list, model.Metric{ID: name, MType: key, Value: &value})
+		}
+	}
+
+	if err := a.client.Post(ctx, urlBase, "application/json", list); err != nil {
 		return err
 	}
 

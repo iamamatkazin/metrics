@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -14,8 +13,9 @@ import (
 )
 
 type Storager interface {
-	GetMetric(id string) *model.Metric
+	GetMetric(ctx context.Context, id string) (*model.Metric, error)
 	UpdateMetric(ctx context.Context, metric model.Metric) error
+	UpdateMetrics(ctx context.Context, metric []model.Metric) error
 	ListMetrics() []model.Metric
 	PingDB(ctx context.Context) error
 	Shutdown(ctx context.Context)
@@ -33,8 +33,6 @@ func New(ctx context.Context, cfg *server.Config) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println("cfg.DatabaseDSN", cfg.DatabaseDSN)
 
 	dbStor, err := postgresql.New(cfg)
 	if err != nil {
@@ -72,12 +70,7 @@ func (s *Storage) Shutdown(ctx context.Context) {
 	}
 
 	if s.dbStor != nil {
-		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-		defer cancel()
-
-		s.dbStor.UpdateMetrics(ctx, metrics)
 		s.dbStor.Close()
-		slog.Info("UpdateMetrics")
 	}
 }
 
@@ -94,9 +87,7 @@ func (s *Storage) saveDump(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-storeIntervalTimer.C:
-			metrics := s.memStor.GetMetrics()
-			s.saveToFile(metrics)
-			s.dbStor.UpdateMetrics(ctx, metrics)
+			s.saveToFile(s.memStor.GetMetrics())
 		}
 	}
 }
@@ -107,8 +98,17 @@ func (s *Storage) saveToFile(metrics map[string]*model.Metric) {
 	}
 }
 
-func (s *Storage) GetMetric(id string) *model.Metric {
-	return s.memStor.GetMetric(id)
+func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, error) {
+	metric, err := s.dbStor.GetMetric(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if metric == nil {
+		metric = s.memStor.GetMetric(id)
+	}
+
+	return metric, nil
 }
 
 func (s *Storage) UpdateMetric(ctx context.Context, metric model.Metric) error {
@@ -120,6 +120,14 @@ func (s *Storage) UpdateMetric(ctx context.Context, metric model.Metric) error {
 	}
 
 	if err := s.dbStor.UpdateMetric(ctx, val); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) UpdateMetrics(ctx context.Context, metrics []model.Metric) error {
+	if err := s.dbStor.UpdateMetrics(ctx, metrics); err != nil {
 		return err
 	}
 

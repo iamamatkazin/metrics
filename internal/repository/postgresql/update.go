@@ -3,6 +3,8 @@ package postgresql
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
@@ -13,13 +15,13 @@ func (s *Storage) UpdateMetric(ctx context.Context, metric *model.Metric) error 
 	}
 
 	query := `
-			INSERT INTO metrics (id, mtype, val, delta)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (id) DO UPDATE SET
-				mtype = EXCLUDED.mtype,
-				val = EXCLUDED.val,
-				delta = EXCLUDED.delta
-		`
+		INSERT INTO metrics (id, mtype, val, delta)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (id) DO UPDATE SET
+			mtype = EXCLUDED.mtype,
+			val = EXCLUDED.val,
+			delta = EXCLUDED.delta
+	`
 
 	if _, err := s.db.ExecContext(ctx, query, metric.ID, metric.MType, metric.Value, metric.Delta); err != nil {
 		return err
@@ -28,7 +30,7 @@ func (s *Storage) UpdateMetric(ctx context.Context, metric *model.Metric) error 
 	return nil
 }
 
-func (s *Storage) UpdateMetrics(ctx context.Context, metric map[string]*model.Metric) error {
+func (s *Storage) UpdateMetrics(ctx context.Context, metrics []model.Metric) error {
 	if s.db == nil {
 		return nil
 	}
@@ -38,8 +40,10 @@ func (s *Storage) UpdateMetrics(ctx context.Context, metric map[string]*model.Me
 		return err
 	}
 
-	for key := range metric {
-		if err := s.updateMetric(ctx, tx, metric[key]); err != nil {
+	for i := range metrics {
+		b, _ := json.Marshal(metrics[i])
+		fmt.Println(i, "!!!!!!!", string(b))
+		if err := s.updateMetric(ctx, tx, metrics[i]); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -48,15 +52,36 @@ func (s *Storage) UpdateMetrics(ctx context.Context, metric map[string]*model.Me
 	return tx.Commit()
 }
 
-func (s *Storage) updateMetric(ctx context.Context, tx *sql.Tx, metric *model.Metric) error {
+func (s *Storage) updateMetric(ctx context.Context, tx *sql.Tx, metric model.Metric) error {
 	query := `
+		INSERT INTO metrics (id, mtype, val, delta)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (id) DO UPDATE SET
+			mtype = EXCLUDED.mtype,
+			val = EXCLUDED.val,
+			delta = EXCLUDED.delta
+	`
+
+	if metric.MType == model.Counter {
+		if metric.Value != nil {
+			delta := int(*metric.Value)
+			metric.Delta = &delta
+			metric.Value = nil
+		}
+
+		query = `
 			INSERT INTO metrics (id, mtype, val, delta)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (id) DO UPDATE SET
 				mtype = EXCLUDED.mtype,
 				val = EXCLUDED.val,
-				delta = EXCLUDED.delta
+				delta = metrics.delta + EXCLUDED.delta
 		`
+	}
+
+	b, _ := json.Marshal(metric)
+	fmt.Println("@@@", string(b))
+
 	if _, err := tx.ExecContext(ctx, query, metric.ID, metric.MType, metric.Value, metric.Delta); err != nil {
 		return err
 	}

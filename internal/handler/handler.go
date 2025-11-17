@@ -42,6 +42,7 @@ func (h *Handler) listRoute() {
 
 	h.Router.With(middleware.AllowContentType("application/json")).Post("/value/", h.getMetricJSON)
 	h.Router.With(middleware.AllowContentType("application/json")).Post("/update/", h.updateMetricJSON)
+	h.Router.With(middleware.AllowContentType("application/json")).Post("/updates/", h.updatesMetricJSON)
 
 	h.Router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
