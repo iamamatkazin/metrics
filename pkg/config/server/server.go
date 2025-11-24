@@ -20,7 +20,6 @@ func New() (*Config, error) {
 	path := flag.String("f", "./storage.json", "путь до файла, куда сохраняются текущие значения")
 	restore := flag.Bool("r", true, "булево значение (true/false), определяющее, следует ли загружать ранее сохранённые значения из указанного файла при старте сервера")
 	database := flag.String("d", "", "строка с адресом подключения к БД")
-	// host=localhost user=postgres password=postgres dbname=metrics sslmode=disable
 	flag.Parse()
 
 	cfg := &Config{

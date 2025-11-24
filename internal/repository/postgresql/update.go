@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
@@ -21,7 +22,7 @@ func (s *Storage) UpdateMetric(ctx context.Context, metric *model.Metric) error 
 			delta = EXCLUDED.delta
 	`
 
-	if _, err := s.db.ExecContext(ctx, query, metric.ID, metric.MType, metric.Value, metric.Delta); err != nil {
+	if err := s.retryableUpdate(ctx, query, metric); err != nil {
 		return err
 	}
 
@@ -75,9 +76,55 @@ func (s *Storage) updateMetric(ctx context.Context, tx *sql.Tx, metric model.Met
 		`
 	}
 
-	if _, err := tx.ExecContext(ctx, query, metric.ID, metric.MType, metric.Value, metric.Delta); err != nil {
+	if err := retryableUpdateTx(ctx, tx, query, metric); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func retryableUpdateTx(ctx context.Context, tx *sql.Tx, query string, metric model.Metric) error {
+	timerRetryable := time.NewTimer(0)
+	count := 0
+
+	for {
+		select {
+		case <-ctx.Done():
+		case <-timerRetryable.C:
+			_, err := tx.ExecContext(ctx, query, metric.ID, metric.MType, metric.Value, metric.Delta)
+			if err != nil {
+				if !isRetryablePgError(err) || count > 3 {
+					return err
+				}
+
+				timerRetryable.Reset(time.Duration(2*count+1) * time.Second)
+				count++
+			}
+
+			return nil
+		}
+	}
+}
+
+func (s *Storage) retryableUpdate(ctx context.Context, query string, metric *model.Metric) error {
+	timerRetryable := time.NewTimer(0)
+	count := 0
+
+	for {
+		select {
+		case <-ctx.Done():
+		case <-timerRetryable.C:
+			_, err := s.db.ExecContext(ctx, query, metric.ID, metric.MType, metric.Value, metric.Delta)
+			if err != nil {
+				if !isRetryablePgError(err) || count > 3 {
+					return err
+				}
+
+				timerRetryable.Reset(time.Duration(2*count+1) * time.Second)
+				count++
+			}
+
+			return nil
+		}
+	}
 }

@@ -2,14 +2,17 @@ package postgresql
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
-	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Storage struct {
@@ -56,5 +59,26 @@ func loadMigrations(db *sql.DB) {
 
 	if err = m.Up(); err != nil && err != migrate.ErrNoChange {
 		slog.Error(err.Error())
+	}
+}
+
+func isRetryablePgError(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		// Неизвестная ошибка — не повторяем
+		return false
+	}
+
+	switch pgErr.Code {
+	case pgerrcode.ConnectionException,
+		pgerrcode.ConnectionDoesNotExist,
+		pgerrcode.ConnectionFailure,
+		pgerrcode.SQLClientUnableToEstablishSQLConnection,
+		pgerrcode.SQLServerRejectedEstablishmentOfSQLConnection,
+		pgerrcode.TransactionResolutionUnknown,
+		pgerrcode.ProtocolViolation:
+		return true
+	default:
+		return false
 	}
 }

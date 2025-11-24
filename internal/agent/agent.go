@@ -45,60 +45,57 @@ func (a *Agent) Run(ctx context.Context) {
 			a.poolMetrics(pollCount)
 
 		case <-reportTicker.C:
-			if err := a.reportMetrics(ctx); err != nil {
+			if err := a.sendMetricsOld(ctx); err != nil {
 				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
 			}
 
-			if err := a.sendMetrics(ctx); err != nil {
+			if err := a.sendMetricsBatch(ctx); err != nil {
 				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
 			}
 		}
 	}
 }
 
-func (a *Agent) reportMetrics(ctx context.Context) (err error) {
+func (a *Agent) sendMetricsOld(ctx context.Context) (err error) {
 	urlBase := fmt.Sprintf("http://%s/update/", a.cfg.Address)
 
 	for key, metrics := range a.metrics {
 		for name, value := range metrics {
-			if err = a.sendMetric(ctx, urlBase, key, name, value); err != nil {
+			url := fmt.Sprintf("%s%s/%s/%v", urlBase, key, name, value)
+
+			if err := a.client.Post(ctx, url, "text/plain; charset=UTF-8", nil); err != nil {
 				return err
 			}
 
-			if err = a.sendMetricJSON(ctx, urlBase, key, name, value); err != nil {
-				return err
-			}
+			// if err = a.sendSingleMetric(ctx, urlBase, key, name, value); err != nil {
+			// 	return err
+			// }
 		}
 	}
 
 	return nil
 }
 
-func (a *Agent) sendMetric(ctx context.Context, urlBase, key, name string, value float64) error {
-	url := fmt.Sprintf("%s%s/%s/%v", urlBase, key, name, value)
+// func (a *Agent) sendMetricNoBody(ctx context.Context, urlBase, key, name string, value float64) error {
 
-	if err := a.client.Post(ctx, url, "text/plain; charset=UTF-8", nil); err != nil {
-		return err
-	}
+// 	return nil
+// }
 
-	return nil
-}
+// func (a *Agent) sendSingleMetric(ctx context.Context, urlBase, key, name string, value float64) error {
+// 	metric := model.Metric{
+// 		ID:    name,
+// 		MType: key,
+// 		Value: &value,
+// 	}
 
-func (a *Agent) sendMetricJSON(ctx context.Context, urlBase, key, name string, value float64) error {
-	metric := model.Metric{
-		ID:    name,
-		MType: key,
-		Value: &value,
-	}
+// 	if err := a.client.Post(ctx, urlBase, "application/json", metric); err != nil {
+// 		return err
+// 	}
 
-	if err := a.client.Post(ctx, urlBase, "application/json", metric); err != nil {
-		return err
-	}
+// 	return nil
+// }
 
-	return nil
-}
-
-func (a *Agent) sendMetrics(ctx context.Context) (err error) {
+func (a *Agent) sendMetricsBatch(ctx context.Context) (err error) {
 	urlBase := fmt.Sprintf("http://%s/updates/", a.cfg.Address)
 
 	list := make([]model.Metric, 0, len(a.metrics[model.Gauge])+len(a.metrics[model.Counter]))
