@@ -2,11 +2,8 @@ package repository
 
 import (
 	"context"
-	"log/slog"
-	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
-	"github.com/iamamatkazin/metrics.git/internal/repository/filestorage"
 	"github.com/iamamatkazin/metrics.git/internal/repository/memstorage"
 	"github.com/iamamatkazin/metrics.git/internal/repository/postgresql"
 	"github.com/iamamatkazin/metrics.git/pkg/config/server"
@@ -14,130 +11,102 @@ import (
 
 type Storager interface {
 	GetMetric(ctx context.Context, id string) (*model.Metric, error)
-	UpdateMetric(ctx context.Context, metric model.Metric) error
+	UpdateMetric(ctx context.Context, metric *model.Metric) error
 	UpdateMetrics(ctx context.Context, metric []model.Metric) error
 	ListMetrics() []model.Metric
-	PingDB(ctx context.Context) error
-	Shutdown(ctx context.Context)
+	Ping(ctx context.Context) error
+	Shutdown()
 }
 
 type Storage struct {
 	cfg      *server.Config
 	memStor  *memstorage.Storage
-	fileStor *filestorage.Storage
 	dbStor   *postgresql.Storage
+	storages []Storager
 }
 
 func New(ctx context.Context, cfg *server.Config) (*Storage, error) {
-	fileStor, err := filestorage.New(cfg)
-	if err != nil {
-		return nil, err
-	}
-
 	dbStor, err := postgresql.New(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	metrics := make(map[string]*model.Metric)
-	if cfg.Restore {
-		if err = fileStor.LoadDump(metrics); err != nil {
-			return nil, err
-		}
-	}
-
-	mem := memstorage.New(metrics)
-	s := &Storage{
-		cfg:      cfg,
-		memStor:  mem,
-		fileStor: fileStor,
-		dbStor:   dbStor,
-	}
-
-	go func() {
-		s.saveDump(ctx)
-	}()
-
-	return s, nil
-}
-
-func (s *Storage) Shutdown(ctx context.Context) {
-	metrics := s.memStor.GetMetrics()
-
-	if s.fileStor != nil {
-		s.saveToFile(metrics)
-		s.fileStor.Close()
-	}
-
-	if s.dbStor != nil {
-		s.dbStor.Close()
-	}
-}
-
-func (s *Storage) saveDump(ctx context.Context) {
-	storeIntervalTimer := time.NewTimer(time.Second * time.Duration(s.cfg.StoreInterval))
-	defer storeIntervalTimer.Stop()
-
-	if s.cfg.StoreInterval == 0 {
-		storeIntervalTimer.Stop()
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-storeIntervalTimer.C:
-			s.saveToFile(s.memStor.GetMetrics())
-		}
-	}
-}
-
-func (s *Storage) saveToFile(metrics map[string]*model.Metric) {
-	if err := s.fileStor.SaveToFile(metrics); err != nil {
-		slog.Error("ошибка сохранения метрик в файл", slog.Any("error", err))
-	}
-}
-
-func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, error) {
-	metric, err := s.dbStor.GetMetric(ctx, id)
+	mem, err := memstorage.New(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	if metric == nil {
-		metric = s.memStor.GetMetric(id)
+	storages := make([]Storager, 0, 2)
+	storages = append(storages, mem)
+	storages = append(storages, dbStor)
+
+	s := &Storage{
+		cfg:      cfg,
+		memStor:  mem,
+		dbStor:   dbStor,
+		storages: storages,
 	}
 
-	return metric, nil
+	return s, nil
 }
 
-func (s *Storage) UpdateMetric(ctx context.Context, metric model.Metric) error {
-	val := s.memStor.UpdateMetric(metric)
+func (s *Storage) Shutdown() {
+	for _, storage := range s.storages {
+		storage.Shutdown()
+	}
+}
 
-	if s.cfg.StoreInterval == 0 {
-		metrics := s.memStor.GetMetrics()
-		s.saveToFile(metrics)
+func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, error) {
+	for _, storage := range s.storages {
+		metric, err := storage.GetMetric(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+
+		if metric != nil {
+			return metric, nil
+		}
 	}
 
-	if err := s.dbStor.UpdateMetric(ctx, val); err != nil {
-		return err
+	return nil, nil
+}
+
+func (s *Storage) UpdateMetric(ctx context.Context, metric *model.Metric) error {
+	for _, storage := range s.storages {
+		if err := storage.UpdateMetric(ctx, metric); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (s *Storage) UpdateMetrics(ctx context.Context, metrics []model.Metric) error {
-	if err := s.dbStor.UpdateMetrics(ctx, metrics); err != nil {
-		return err
+	for _, storage := range s.storages {
+		if err := storage.UpdateMetrics(ctx, metrics); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (s *Storage) ListMetrics() []model.Metric {
-	return s.memStor.ListMetrics()
+	for _, storage := range s.storages {
+		if list := storage.ListMetrics(); list != nil {
+			return list
+		}
+	}
+
+	return nil
 }
 
-func (s *Storage) PingDB(ctx context.Context) error {
-	return s.dbStor.Ping(ctx)
+func (s *Storage) Ping(ctx context.Context) error {
+	for _, storage := range s.storages {
+		if err := storage.Ping(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

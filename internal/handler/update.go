@@ -24,7 +24,7 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.storage.UpdateMetric(r.Context(), metric); err != nil {
+	if err := h.storage.UpdateMetric(r.Context(), &metric); err != nil {
 		writeText(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -44,7 +44,7 @@ func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.storage.UpdateMetric(r.Context(), metric); err != nil {
+	if err := h.storage.UpdateMetric(r.Context(), &metric); err != nil {
 		writeText(w, http.StatusInternalServerError, err.Error())
 		return
 	}

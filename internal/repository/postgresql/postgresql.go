@@ -1,10 +1,12 @@
 package postgresql
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log/slog"
 
+	"github.com/iamamatkazin/metrics.git/internal/model"
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -36,12 +38,6 @@ func New(cfg *sconfig.Config) (*Storage, error) {
 		cfg: cfg,
 		db:  db,
 	}, nil
-}
-
-func (s *Storage) Close() {
-	if s.db != nil {
-		s.db.Close()
-	}
 }
 
 func loadMigrations(db *sql.DB) {
@@ -80,5 +76,13 @@ func isRetryablePgError(err error) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func (s *Storage) ListMetrics() []model.Metric      { return nil }
+func (s *Storage) PingDB(ctx context.Context) error { return nil }
+func (s *Storage) Shutdown() {
+	if s.db != nil {
+		s.db.Close()
 	}
 }

@@ -5,7 +5,7 @@ import (
 )
 
 func (h *Handler) pingDB(w http.ResponseWriter, r *http.Request) {
-	if err := h.storage.PingDB(r.Context()); err != nil {
+	if err := h.storage.Ping(r.Context()); err != nil {
 		writeText(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}

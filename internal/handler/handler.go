@@ -88,6 +88,6 @@ func writeHTML(w http.ResponseWriter, status int, html string) {
 	}
 }
 
-func (h *Handler) Shutdown(ctx context.Context) {
-	h.storage.Shutdown(ctx)
+func (h *Handler) Shutdown() {
+	h.storage.Shutdown()
 }
