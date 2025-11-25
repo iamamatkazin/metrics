@@ -74,3 +74,55 @@ func TestHandler_updateMetric(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkSign(t *testing.T) {
+	type args struct {
+		key  string
+		hash string
+		body any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "Test 1",
+			args:    args{key: ""},
+			wantErr: false,
+		},
+		{
+			name:    "Test 2",
+			args:    args{key: "key", body: make(chan int)},
+			wantErr: true,
+		},
+		{
+			name: "Test 3",
+			args: args{
+				key:  "key",
+				body: "src",
+				hash: "e2ba995098bc84e91b6cf607d3b6ef7a31f97ae38dfc7221f38e927bf2b49152",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Test 4",
+			args: args{
+				key:  "key",
+				body: "src_bad",
+				hash: "e2ba995098bc84e91b6cf607d3b6ef7a31f97ae38dfc7221f38e927bf2b49152",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, "/update/gauge/testCounter/1A0", nil)
+			r.Header.Add("HashSHA256", tt.args.hash)
+
+			if err := checkSign(r, tt.args.key, tt.args.body); (err != nil) != tt.wantErr {
+				t.Errorf("checkSign() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

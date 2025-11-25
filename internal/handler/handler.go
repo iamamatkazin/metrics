@@ -8,15 +8,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/iamamatkazin/metrics.git/internal/repository"
-	"github.com/iamamatkazin/metrics.git/pkg/config/server"
+	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
 type Handler struct {
 	storage repository.Storager
 	Router  *chi.Mux
+	cfg     *sconfig.Config
 }
 
-func New(ctx context.Context, cfg *server.Config) (*Handler, error) {
+func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 	storage, err := repository.New(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -24,6 +25,7 @@ func New(ctx context.Context, cfg *server.Config) (*Handler, error) {
 
 	h := &Handler{
 		storage: storage,
+		cfg:     cfg,
 	}
 
 	h.Router = chi.NewRouter()
@@ -46,18 +48,12 @@ func (h *Handler) listRoute() {
 
 	h.Router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-
-		if _, err := w.Write([]byte(http.StatusText(http.StatusNotFound))); err != nil {
-			slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
-		}
+		w.Write([]byte(http.StatusText(http.StatusNotFound)))
 	})
 
 	h.Router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-
-		if _, err := w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed))); err != nil {
-			slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
-		}
+		w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
 	})
 }
 

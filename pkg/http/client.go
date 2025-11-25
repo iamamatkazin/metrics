@@ -9,8 +9,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/iamamatkazin/metrics.git/internal/common"
 	"github.com/iamamatkazin/metrics.git/pkg/config/agent"
 )
+
+type Clienter interface {
+	Post(ctx context.Context, url, contentType string, data any) (err error)
+}
 
 type Client struct {
 	*http.Client
@@ -51,6 +56,9 @@ func (c *Client) Post(ctx context.Context, url, contentType string, data any) (e
 
 	// в заголовках запроса сообщаем, что данные кодированы стандартной URL-схемой
 	request.Header.Set("Content-Type", contentType)
+	if c.cfg.Key != "" {
+		request.Header.Set("HashSHA256", common.CalcSign([]byte(c.cfg.Key), body))
+	}
 
 	// отправляем запрос и получаем ответ
 	response, err := c.Client.Do(request)

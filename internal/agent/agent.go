@@ -12,22 +12,26 @@ import (
 )
 
 type Agent struct {
-	client  *pkghttp.Client
+	client  pkghttp.Clienter
 	cfg     *agent.Config
 	metrics map[string]map[string]float64
 }
 
 func New(cfg *agent.Config) *Agent {
 	slog.Info("Запуск агента")
-	return &Agent{
+	a := &Agent{
 		cfg:     cfg,
 		client:  pkghttp.New(cfg),
 		metrics: createMetrics(),
 	}
+
+	a.poolMetrics(1)
+
+	return a
 }
 
 func (a *Agent) Run(ctx context.Context) {
-	pollCount := 0
+	pollCount := 1
 
 	pollTicker := time.NewTicker(time.Second * time.Duration(a.cfg.PollInterval))
 	defer pollTicker.Stop()
@@ -66,34 +70,11 @@ func (a *Agent) sendMetricsOld(ctx context.Context) (err error) {
 			if err := a.client.Post(ctx, url, "text/plain; charset=UTF-8", nil); err != nil {
 				return err
 			}
-
-			// if err = a.sendSingleMetric(ctx, urlBase, key, name, value); err != nil {
-			// 	return err
-			// }
 		}
 	}
 
 	return nil
 }
-
-// func (a *Agent) sendMetricNoBody(ctx context.Context, urlBase, key, name string, value float64) error {
-
-// 	return nil
-// }
-
-// func (a *Agent) sendSingleMetric(ctx context.Context, urlBase, key, name string, value float64) error {
-// 	metric := model.Metric{
-// 		ID:    name,
-// 		MType: key,
-// 		Value: &value,
-// 	}
-
-// 	if err := a.client.Post(ctx, urlBase, "application/json", metric); err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
 
 func (a *Agent) sendMetricsBatch(ctx context.Context) (err error) {
 	urlBase := fmt.Sprintf("http://%s/updates/", a.cfg.Address)
