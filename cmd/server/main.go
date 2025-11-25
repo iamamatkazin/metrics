@@ -9,14 +9,14 @@ import (
 	"syscall"
 
 	"github.com/iamamatkazin/metrics.git/internal/handler"
-	"github.com/iamamatkazin/metrics.git/pkg/config/server"
+	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := server.New()
+	cfg, err := sconfig.New()
 	if err != nil {
 		slog.Error("Ошибка чтения конфигурации:", slog.Any("error", err))
 		os.Exit(2)
@@ -48,6 +48,8 @@ func main() {
 
 	select {
 	case <-quit:
+		app.Shutdown()
+
 		if err := server.Shutdown(ctx); err != nil {
 			slog.Error("Ошибка остановки сервера:", slog.Any("error", err))
 		}

@@ -22,7 +22,7 @@ func New() (*Config, error) {
 
 	cfg := &Config{
 		Address:        *address,
-		Timeout:        time.Second * 5,
+		Timeout:        time.Second * 10,
 		PollInterval:   *pool,
 		ReportInterval: *report,
 	}

@@ -24,7 +24,11 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.storage.UpdateMetric(metric)
+	if err := h.storage.UpdateMetric(r.Context(), &metric); err != nil {
+		writeText(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	writeText(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
@@ -40,6 +44,25 @@ func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.storage.UpdateMetric(metric)
+	if err := h.storage.UpdateMetric(r.Context(), &metric); err != nil {
+		writeText(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
+}
+
+func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
+	var metrics []model.Metric
+	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.storage.UpdateMetrics(r.Context(), metrics); err != nil {
+		writeText(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
 }

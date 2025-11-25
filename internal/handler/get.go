@@ -13,7 +13,13 @@ func (h *Handler) getMetric(w http.ResponseWriter, r *http.Request) {
 	code := http.StatusNotFound
 	message := http.StatusText(http.StatusNotFound)
 
-	if value := h.storage.GetMetric(chi.URLParam(r, "id")); value != nil {
+	value, err := h.storage.GetMetric(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		writeText(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if value != nil {
 		code = http.StatusOK
 
 		if value.MType == model.Gauge {
@@ -38,7 +44,13 @@ func (h *Handler) getMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if value := h.storage.GetMetric(metric.ID); value != nil {
+	value, err := h.storage.GetMetric(r.Context(), metric.ID)
+	if err != nil {
+		writeText(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if value != nil {
 		if metric.MType == model.Gauge {
 			metric.Value = value.Value
 		} else {
@@ -54,6 +66,5 @@ func (h *Handler) getMetricJSON(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, body)
 	} else {
 		writeText(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
-		// writeJSON(w, http.StatusNotFound, []byte("{\"error\": \"Not Found\"}"))
 	}
 }

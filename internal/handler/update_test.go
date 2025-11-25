@@ -15,6 +15,7 @@ import (
 
 type want struct {
 	contentType string
+	body        string
 	statusCode  int
 }
 

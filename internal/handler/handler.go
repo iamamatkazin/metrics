@@ -35,12 +35,14 @@ func New(ctx context.Context, cfg *server.Config) (*Handler, error) {
 func (h *Handler) listRoute() {
 	h.Router.Use(middlewareLog)
 	h.Router.Use(middlewareGzip)
+	h.Router.Get("/ping", h.pingDB)
 	h.Router.Get("/", h.listMetrics)
 	h.Router.Get("/value/{type}/{id}", h.getMetric)
 	h.Router.Post("/update/{type}/{id}/{val}", h.updateMetric)
 
 	h.Router.With(middleware.AllowContentType("application/json")).Post("/value/", h.getMetricJSON)
 	h.Router.With(middleware.AllowContentType("application/json")).Post("/update/", h.updateMetricJSON)
+	h.Router.With(middleware.AllowContentType("application/json")).Post("/updates/", h.updatesMetricJSON)
 
 	h.Router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -84,4 +86,8 @@ func writeHTML(w http.ResponseWriter, status int, html string) {
 	if _, err := w.Write([]byte(html)); err != nil {
 		slog.Error("Ошибка отправки ответа:", slog.Any("error", err))
 	}
+}
+
+func (h *Handler) Shutdown() {
+	h.storage.Shutdown()
 }
