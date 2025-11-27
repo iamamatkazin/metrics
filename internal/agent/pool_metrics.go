@@ -1,10 +1,13 @@
 package agent
 
 import (
+	"log/slog"
 	"math/rand/v2"
 	"runtime"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 func (a *Agent) poolMetrics(pollCount int) {
@@ -40,4 +43,22 @@ func (a *Agent) poolMetrics(pollCount int) {
 	a.metrics[model.Gauge]["Sys"] = float64(memStats.Sys)
 	a.metrics[model.Counter]["PollCount"] = float64(pollCount)
 	a.metrics[model.Gauge]["RandomValue"] = rand.Float64()
+}
+
+func (a *Agent) poolGopsUtil() {
+	v, _ := mem.VirtualMemory()
+	a.metrics[model.Gauge]["TotalMemory"] = float64(v.Total)
+	a.metrics[model.Gauge]["FreeMemory"] = float64(v.Free)
+
+	percent, err := cpu.Percent(0, true)
+	if err != nil {
+		slog.Error("Ошибка доступа к метрикам cpu.Percent")
+		return
+	}
+	cpuUtilization := 0.
+	for i := range percent {
+		cpuUtilization += percent[i]
+	}
+
+	a.metrics[model.Gauge]["CPUutilization1"] = cpuUtilization
 }

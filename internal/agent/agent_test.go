@@ -43,7 +43,6 @@ func TestNew(t *testing.T) {
 
 // func TestAgent_sendMetric(t *testing.T) {
 // 	type args struct {
-// 		ctx     context.Context
 // 		urlBase string
 // 		key     string
 // 		name    string
@@ -53,19 +52,11 @@ func TestNew(t *testing.T) {
 // 		name    string
 // 		args    args
 // 		mockErr error
-// 		wantErr bool
 // 	}{
 // 		{
 // 			name:    "Test_err_false",
 // 			args:    args{},
 // 			mockErr: nil,
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name:    "Test_err_true",
-// 			args:    args{},
-// 			mockErr: fmt.Errorf("error"),
-// 			wantErr: true,
 // 		},
 // 	}
 // 	for _, tt := range tests {
@@ -77,51 +68,7 @@ func TestNew(t *testing.T) {
 // 				client: mock,
 // 			}
 
-// 			if err := a.sendMetric(tt.args.ctx, tt.args.urlBase, tt.args.key, tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-// 				t.Errorf("Agent.sendMetric() error = %v, wantErr %v", err, tt.wantErr)
-// 			}
-// 		})
-// 	}
-// }
-
-// func TestAgent_sendMetricJSON(t *testing.T) {
-// 	type args struct {
-// 		ctx     context.Context
-// 		urlBase string
-// 		key     string
-// 		name    string
-// 		value   float64
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		args    args
-// 		mockErr error
-// 		wantErr bool
-// 	}{
-// 		{
-// 			name:    "Test_err_false",
-// 			args:    args{},
-// 			mockErr: nil,
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name:    "Test_err_true",
-// 			args:    args{},
-// 			mockErr: fmt.Errorf("error"),
-// 			wantErr: true,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			mock := &mockClient{
-// 				err: tt.mockErr,
-// 			}
-// 			a := &Agent{
-// 				client: mock,
-// 			}
-// 			if err := a.sendMetricJSON(tt.args.ctx, tt.args.urlBase, tt.args.key, tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-// 				t.Errorf("Agent.sendMetricJSON() error = %v, wantErr %v", err, tt.wantErr)
-// 			}
+// 			a.sendMetric(tt.args.urlBase, tt.args.key, tt.args.name, tt.args.value)
 // 		})
 // 	}
 // }
@@ -165,56 +112,39 @@ func TestNew(t *testing.T) {
 // 				metrics: metrics,
 // 				cfg:     &agent.Config{},
 // 			}
-// 			if err := a.sendMetrics(tt.args.ctx); (err != nil) != tt.wantErr {
-// 				t.Errorf("Agent.sendMetrics() error = %v, wantErr %v", err, tt.wantErr)
-// 			}
+// 			a.sendMetrics()
 // 		})
 // 	}
 // }
 
-// func TestAgent_reportMetrics(t *testing.T) {
-// 	type args struct {
-// 		ctx context.Context
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		args    args
-// 		mockErr error
-// 		wantErr bool
-// 	}{
-// 		{
-// 			name:    "Test_err_false",
-// 			args:    args{},
-// 			mockErr: nil,
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name:    "Test_err_true",
-// 			args:    args{},
-// 			mockErr: fmt.Errorf("error"),
-// 			wantErr: true,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			mock := &mockClient{
-// 				err: tt.mockErr,
-// 			}
+func TestAgent_reportMetrics(t *testing.T) {
+	tests := []struct {
+		name    string
+		mockErr error
+	}{
+		{
+			name:    "Test_err_false",
+			mockErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// mock := &mockClient{
+			// 	err: tt.mockErr,
+			// }
 
-// 			metrics := make(map[string]map[string]float64)
-// 			metrics[model.Gauge] = make(map[string]float64)
-// 			metrics[model.Counter] = make(map[string]float64)
-// 			metrics[model.Gauge]["test"] = 1.
+			// 			metrics := make(map[string]map[string]float64)
+			// 			metrics[model.Gauge] = make(map[string]float64)
+			// 			metrics[model.Counter] = make(map[string]float64)
+			// 			metrics[model.Gauge]["test"] = 1.
 
-// 			a := &Agent{
-// 				client:  mock,
-// 				metrics: metrics,
-// 				cfg:     &agent.Config{},
-// 			}
+			// 			a := &Agent{
+			// 				client:  mock,
+			// 				metrics: metrics,
+			// 				cfg:     &agent.Config{},
+			// 			}
 
-// 			if err := a.reportMetrics(tt.args.ctx); (err != nil) != tt.wantErr {
-// 				t.Errorf("Agent.reportMetrics() error = %v, wantErr %v", err, tt.wantErr)
-// 			}
-// 		})
-// 	}
-// }
+			// a.reportMetrics()
+		})
+	}
+}

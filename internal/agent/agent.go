@@ -11,10 +11,17 @@ import (
 	pkghttp "github.com/iamamatkazin/metrics.git/pkg/http"
 )
 
+type request struct {
+	url         string
+	contentType string
+	metric      any
+}
+
 type Agent struct {
 	client  pkghttp.Clienter
 	cfg     *agent.Config
 	metrics map[string]map[string]float64
+	jobs    chan request
 }
 
 func New(cfg *agent.Config) *Agent {
@@ -23,14 +30,20 @@ func New(cfg *agent.Config) *Agent {
 		cfg:     cfg,
 		client:  pkghttp.New(cfg),
 		metrics: createMetrics(),
+		jobs:    make(chan request, 100),
 	}
 
 	a.poolMetrics(1)
+	a.poolGopsUtil()
 
 	return a
 }
 
 func (a *Agent) Run(ctx context.Context) {
+	for range a.cfg.RateLimit {
+		go a.worker(ctx, a.jobs)
+	}
+
 	pollCount := 1
 
 	pollTicker := time.NewTicker(time.Second * time.Duration(a.cfg.PollInterval))
@@ -46,37 +59,35 @@ func (a *Agent) Run(ctx context.Context) {
 
 		case <-pollTicker.C:
 			pollCount++
-			a.poolMetrics(pollCount)
+			go func(count int) {
+				a.poolMetrics(count)
+			}(pollCount)
+
+			go a.poolGopsUtil()
 
 		case <-reportTicker.C:
-			if err := a.sendMetricsOld(ctx); err != nil {
-				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
-			}
-
-			if err := a.sendMetricsBatch(ctx); err != nil {
-				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
-			}
+			a.sendMetricsOld()
+			a.sendMetricsBatch()
 		}
 	}
 }
 
-func (a *Agent) sendMetricsOld(ctx context.Context) (err error) {
+func (a *Agent) sendMetricsOld() {
 	urlBase := fmt.Sprintf("http://%s/update/", a.cfg.Address)
 
 	for key, metrics := range a.metrics {
 		for name, value := range metrics {
 			url := fmt.Sprintf("%s%s/%s/%v", urlBase, key, name, value)
 
-			if err := a.client.Post(ctx, url, "text/plain; charset=UTF-8", nil); err != nil {
-				return err
+			select {
+			case a.jobs <- request{url: url, contentType: "text/plain; charset=UTF-8", metric: nil}:
+			default:
 			}
 		}
 	}
-
-	return nil
 }
 
-func (a *Agent) sendMetricsBatch(ctx context.Context) (err error) {
+func (a *Agent) sendMetricsBatch() {
 	urlBase := fmt.Sprintf("http://%s/updates/", a.cfg.Address)
 
 	list := make([]model.Metric, 0, len(a.metrics[model.Gauge])+len(a.metrics[model.Counter]))
@@ -86,9 +97,8 @@ func (a *Agent) sendMetricsBatch(ctx context.Context) (err error) {
 		}
 	}
 
-	if err := a.client.Post(ctx, urlBase, "application/json", list); err != nil {
-		return err
+	select {
+	case a.jobs <- request{url: urlBase, contentType: "application/json", metric: list}:
+	default:
 	}
-
-	return nil
 }
