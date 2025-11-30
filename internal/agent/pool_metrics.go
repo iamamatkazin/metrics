@@ -11,6 +11,9 @@ import (
 )
 
 func (a *Agent) poolMetrics(pollCount int) {
+	a.Lock()
+	defer a.Unlock()
+
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
@@ -46,6 +49,9 @@ func (a *Agent) poolMetrics(pollCount int) {
 }
 
 func (a *Agent) poolGopsUtil() {
+	a.Lock()
+	defer a.Unlock()
+
 	v, _ := mem.VirtualMemory()
 	a.metrics[model.Gauge]["TotalMemory"] = float64(v.Total)
 	a.metrics[model.Gauge]["FreeMemory"] = float64(v.Free)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
@@ -22,6 +23,7 @@ type Agent struct {
 	cfg     *agent.Config
 	metrics map[string]map[string]float64
 	jobs    chan request
+	sync.RWMutex
 }
 
 func New(cfg *agent.Config) *Agent {
@@ -33,18 +35,14 @@ func New(cfg *agent.Config) *Agent {
 		jobs:    make(chan request, 100),
 	}
 
-	a.poolMetrics(1)
-	a.poolGopsUtil()
-
 	return a
 }
 
 func (a *Agent) Run(ctx context.Context) {
-	for range a.cfg.RateLimit {
-		go a.worker(ctx, a.jobs)
-	}
-
 	pollCount := 1
+
+	a.poolMetrics(pollCount)
+	a.poolGopsUtil()
 
 	pollTicker := time.NewTicker(time.Second * time.Duration(a.cfg.PollInterval))
 	defer pollTicker.Stop()
@@ -73,6 +71,9 @@ func (a *Agent) Run(ctx context.Context) {
 }
 
 func (a *Agent) sendMetricsOld() {
+	a.RLock()
+	defer a.RUnlock()
+
 	urlBase := fmt.Sprintf("http://%s/update/", a.cfg.Address)
 
 	for key, metrics := range a.metrics {
@@ -82,12 +83,16 @@ func (a *Agent) sendMetricsOld() {
 			select {
 			case a.jobs <- request{url: url, contentType: "text/plain; charset=UTF-8", metric: nil}:
 			default:
+				slog.Info("Нет свободного канала для обработки метрики:", slog.Any(name, value))
 			}
 		}
 	}
 }
 
 func (a *Agent) sendMetricsBatch() {
+	a.RLock()
+	defer a.RUnlock()
+
 	urlBase := fmt.Sprintf("http://%s/updates/", a.cfg.Address)
 
 	list := make([]model.Metric, 0, len(a.metrics[model.Gauge])+len(a.metrics[model.Counter]))
@@ -100,5 +105,10 @@ func (a *Agent) sendMetricsBatch() {
 	select {
 	case a.jobs <- request{url: urlBase, contentType: "application/json", metric: list}:
 	default:
+		slog.Info("Нет свободного канала для обработки списка метрик.")
 	}
+}
+
+func (a *Agent) Shutdown() {
+	close(a.jobs)
 }

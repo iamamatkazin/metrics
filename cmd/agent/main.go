@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/iamamatkazin/metrics.git/internal/agent"
@@ -21,23 +22,35 @@ func main() {
 		os.Exit(2)
 	}
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-
-	exit := make(chan struct{})
-
 	go func() {
-		agent.New(cfg).Run(ctx)
-		close(exit)
-	}()
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	select {
-	case <-quit:
+		<-quit
 		slog.Info("Начало остановки агента...")
 		cancel()
-	case <-exit:
-		cancel()
-	}
+	}()
+
+	a := agent.New(cfg)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+
+		a.Run(ctx)
+		a.Shutdown()
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		for range cfg.RateLimit {
+			a.Worker()
+		}
+	}()
+
+	wg.Wait()
 
 	slog.Info("Выключение агента")
 }
