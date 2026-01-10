@@ -2,9 +2,12 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/iamamatkazin/metrics.git/internal/common"
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
@@ -59,10 +62,35 @@ func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := checkSign(r, h.cfg.Key, metrics); err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	if err := h.storage.UpdateMetrics(r.Context(), metrics); err != nil {
 		writeText(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
+}
+
+func checkSign(r *http.Request, key string, body any) error {
+	if key == "" {
+		return nil
+	}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	calcValue := common.CalcSign([]byte(key), data)
+	headerValue := r.Header.Get("HashSHA256")
+
+	if !reflect.DeepEqual(calcValue, headerValue) {
+		return fmt.Errorf("подпись не верна")
+	}
+
+	return nil
 }

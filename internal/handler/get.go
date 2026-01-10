@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/iamamatkazin/metrics.git/internal/common"
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
@@ -61,6 +62,10 @@ func (h *Handler) getMetricJSON(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			writeText(w, http.StatusInternalServerError, err.Error())
 			return
+		}
+
+		if h.cfg.Key != "" {
+			w.Header().Set("HashSHA256", string(common.CalcSign([]byte(h.cfg.Key), body)))
 		}
 
 		writeJSON(w, http.StatusOK, body)

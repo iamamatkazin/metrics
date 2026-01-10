@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
@@ -11,23 +12,37 @@ import (
 	pkghttp "github.com/iamamatkazin/metrics.git/pkg/http"
 )
 
+type request struct {
+	url         string
+	contentType string
+	metric      any
+}
+
 type Agent struct {
-	client  *pkghttp.Client
+	client  pkghttp.Clienter
 	cfg     *agent.Config
 	metrics map[string]map[string]float64
+	jobs    chan request
+	sync.RWMutex
 }
 
 func New(cfg *agent.Config) *Agent {
 	slog.Info("Запуск агента")
-	return &Agent{
+	a := &Agent{
 		cfg:     cfg,
 		client:  pkghttp.New(cfg),
 		metrics: createMetrics(),
+		jobs:    make(chan request, 100),
 	}
+
+	return a
 }
 
 func (a *Agent) Run(ctx context.Context) {
-	pollCount := 0
+	pollCount := 1
+
+	a.poolMetrics(pollCount)
+	a.poolGopsUtil()
 
 	pollTicker := time.NewTicker(time.Second * time.Duration(a.cfg.PollInterval))
 	defer pollTicker.Stop()
@@ -42,60 +57,42 @@ func (a *Agent) Run(ctx context.Context) {
 
 		case <-pollTicker.C:
 			pollCount++
-			a.poolMetrics(pollCount)
+			go func(count int) {
+				a.poolMetrics(count)
+			}(pollCount)
+
+			go a.poolGopsUtil()
 
 		case <-reportTicker.C:
-			if err := a.sendMetricsOld(ctx); err != nil {
-				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
-			}
-
-			if err := a.sendMetricsBatch(ctx); err != nil {
-				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
-			}
+			a.sendMetricsOld()
+			a.sendMetricsBatch()
 		}
 	}
 }
 
-func (a *Agent) sendMetricsOld(ctx context.Context) (err error) {
+func (a *Agent) sendMetricsOld() {
+	a.RLock()
+	defer a.RUnlock()
+
 	urlBase := fmt.Sprintf("http://%s/update/", a.cfg.Address)
 
 	for key, metrics := range a.metrics {
 		for name, value := range metrics {
 			url := fmt.Sprintf("%s%s/%s/%v", urlBase, key, name, value)
 
-			if err := a.client.Post(ctx, url, "text/plain; charset=UTF-8", nil); err != nil {
-				return err
+			select {
+			case a.jobs <- request{url: url, contentType: "text/plain; charset=UTF-8", metric: nil}:
+			default:
+				slog.Info("Нет свободного канала для обработки метрики:", slog.Any(name, value))
 			}
-
-			// if err = a.sendSingleMetric(ctx, urlBase, key, name, value); err != nil {
-			// 	return err
-			// }
 		}
 	}
-
-	return nil
 }
 
-// func (a *Agent) sendMetricNoBody(ctx context.Context, urlBase, key, name string, value float64) error {
+func (a *Agent) sendMetricsBatch() {
+	a.RLock()
+	defer a.RUnlock()
 
-// 	return nil
-// }
-
-// func (a *Agent) sendSingleMetric(ctx context.Context, urlBase, key, name string, value float64) error {
-// 	metric := model.Metric{
-// 		ID:    name,
-// 		MType: key,
-// 		Value: &value,
-// 	}
-
-// 	if err := a.client.Post(ctx, urlBase, "application/json", metric); err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-func (a *Agent) sendMetricsBatch(ctx context.Context) (err error) {
 	urlBase := fmt.Sprintf("http://%s/updates/", a.cfg.Address)
 
 	list := make([]model.Metric, 0, len(a.metrics[model.Gauge])+len(a.metrics[model.Counter]))
@@ -105,9 +102,13 @@ func (a *Agent) sendMetricsBatch(ctx context.Context) (err error) {
 		}
 	}
 
-	if err := a.client.Post(ctx, urlBase, "application/json", list); err != nil {
-		return err
+	select {
+	case a.jobs <- request{url: urlBase, contentType: "application/json", metric: list}:
+	default:
+		slog.Info("Нет свободного канала для обработки списка метрик.")
 	}
+}
 
-	return nil
+func (a *Agent) Shutdown() {
+	close(a.jobs)
 }
