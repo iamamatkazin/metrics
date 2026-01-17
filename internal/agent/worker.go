@@ -11,7 +11,7 @@ func (a *Agent) Worker() {
 			ctx, cancel := context.WithTimeout(context.Background(), a.cfg.Timeout)
 			defer cancel()
 
-			if err := a.client.Post(ctx, job.url, job.contentType, job.metric); err != nil {
+			if err := a.client.Post(ctx, job.url, job.contentType, a.cfg.Key, job.metric); err != nil {
 				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
 			}
 		}()

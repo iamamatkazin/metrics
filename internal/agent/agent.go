@@ -30,7 +30,7 @@ func New(cfg *agent.Config) *Agent {
 	slog.Info("Запуск агента")
 	a := &Agent{
 		cfg:     cfg,
-		client:  pkghttp.New(cfg),
+		client:  pkghttp.New(cfg.Timeout),
 		metrics: createMetrics(),
 		jobs:    make(chan request, 100),
 	}

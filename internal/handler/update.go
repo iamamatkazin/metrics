@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/iamamatkazin/metrics.git/internal/common"
@@ -32,6 +33,10 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if message := getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
+		h.audit.Send(*message)
+	}
+
 	writeText(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
@@ -52,6 +57,10 @@ func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if message := getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
+		h.audit.Send(*message)
+	}
+
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
 }
 
@@ -70,6 +79,10 @@ func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if err := h.storage.UpdateMetrics(r.Context(), metrics); err != nil {
 		writeText(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	if message := getMessage(metrics, r.RemoteAddr); message != nil {
+		h.audit.Send(*message)
 	}
 
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
@@ -93,4 +106,21 @@ func checkSign(r *http.Request, key string, body any) error {
 	}
 
 	return nil
+}
+
+func getMessage(list []model.Metric, ip string) *model.Message {
+	if len(list) == 0 {
+		return nil
+	}
+
+	metrics := make([]string, 0, len(list))
+	for _, item := range list {
+		metrics = append(metrics, item.ID)
+	}
+
+	return &model.Message{
+		Date:    time.Now().Unix(),
+		Metrics: metrics,
+		IP:      ip,
+	}
 }

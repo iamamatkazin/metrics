@@ -7,18 +7,27 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/iamamatkazin/metrics.git/internal/observer"
 	"github.com/iamamatkazin/metrics.git/internal/repository"
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
+// Handler - главная структура приложения.
 type Handler struct {
 	storage repository.Storager
 	Router  *chi.Mux
 	cfg     *sconfig.Config
+	audit   *observer.Event
 }
 
+// New - конструктор для Handler.
 func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 	storage, err := repository.New(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	audit, err := observer.New(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -26,6 +35,7 @@ func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 	h := &Handler{
 		storage: storage,
 		cfg:     cfg,
+		audit:   audit,
 	}
 
 	h.Router = chi.NewRouter()
