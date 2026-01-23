@@ -8,6 +8,7 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
+// GetMetric - получить метрику по ее идентификатору.
 func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, error) {
 	if s.db == nil {
 		return nil, nil
@@ -43,6 +44,7 @@ func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, erro
 	return &metric, nil
 }
 
+// retryableGet - повторная отправка метрики.
 func (s *Storage) retryableGet(ctx context.Context, query, id string) (mType string, val sql.NullFloat64, delta sql.NullInt64, err error) {
 	timerRetryable := time.NewTimer(0)
 	count := 0

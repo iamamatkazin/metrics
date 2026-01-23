@@ -44,6 +44,7 @@ func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 	return h, nil
 }
 
+// listRoute - формирует список роутов.
 func (h *Handler) listRoute() {
 	h.Router.Use(middlewareLog)
 	h.Router.Use(middlewareGzip)
@@ -67,6 +68,7 @@ func (h *Handler) listRoute() {
 	})
 }
 
+// writeText - формирует ответ сервера в виде текста.
 func writeText(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
@@ -76,6 +78,7 @@ func writeText(w http.ResponseWriter, status int, message string) {
 	}
 }
 
+// writeJSON - формирует ответ сервера в виде json структуры.
 func writeJSON(w http.ResponseWriter, status int, body []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -85,6 +88,7 @@ func writeJSON(w http.ResponseWriter, status int, body []byte) {
 	}
 }
 
+// writeHTML - формирует ответ сервера в виде html структуры.
 func writeHTML(w http.ResponseWriter, status int, html string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
@@ -94,6 +98,7 @@ func writeHTML(w http.ResponseWriter, status int, html string) {
 	}
 }
 
+// Shutdown - коррктное завершение сервиса.
 func (h *Handler) Shutdown() {
 	h.storage.Shutdown()
 }

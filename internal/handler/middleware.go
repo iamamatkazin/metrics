@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// middlewareLog - мидлваре логирования запроса.
 func middlewareLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -30,6 +31,7 @@ func middlewareLog(next http.Handler) http.Handler {
 	})
 }
 
+// middlewareGzip - мидлваре сжатия запроса.
 func middlewareGzip(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {

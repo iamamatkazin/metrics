@@ -5,6 +5,7 @@ import (
 	"log/slog"
 )
 
+// Worker - воркер отправки метрик на сервер.
 func (a *Agent) Worker() {
 	for job := range a.jobs {
 		func() {

@@ -12,14 +12,17 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/common"
 )
 
+// Clienter - интерфейс отправки http запросов.
 type Clienter interface {
 	Post(ctx context.Context, url, contentType, key string, data any) (err error)
 }
 
+// Client - структура реализации кастомного http.Client.
 type Client struct {
 	*http.Client
 }
 
+// New - конструктор для Client.
 func New(timeout time.Duration) *Client {
 	return &Client{
 		Client: &http.Client{
@@ -29,6 +32,7 @@ func New(timeout time.Duration) *Client {
 	}
 }
 
+// Post - кастомная реализация метода POST.
 func (c *Client) Post(ctx context.Context, url, contentType, key string, data any) (err error) {
 	var (
 		request *http.Request
@@ -74,6 +78,7 @@ func (c *Client) Post(ctx context.Context, url, contentType, key string, data an
 	return nil
 }
 
+// newRequestWithContext - внутренний метод для метода POST, в котором реализован механизм Retriable.
 func newRequestWithContext(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	timerRetriable := time.NewTimer(0)
 	count := 0

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 )
 
+// CalcSign - вычисляем подпись.
 func CalcSign(key, src []byte) string {
 	h := hmac.New(sha256.New, key)
 	h.Write(src)

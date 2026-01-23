@@ -12,12 +12,14 @@ import (
 	pkghttp "github.com/iamamatkazin/metrics.git/pkg/http"
 )
 
+// request - структура метрики для передачи данных внутри сервиса.
 type request struct {
 	url         string
 	contentType string
 	metric      any
 }
 
+// Agent - структура агента.
 type Agent struct {
 	client  pkghttp.Clienter
 	cfg     *agent.Config
@@ -26,6 +28,7 @@ type Agent struct {
 	sync.RWMutex
 }
 
+// New - конструктор для Agent.
 func New(cfg *agent.Config) *Agent {
 	slog.Info("Запуск агента")
 	a := &Agent{
@@ -38,7 +41,8 @@ func New(cfg *agent.Config) *Agent {
 	return a
 }
 
-func (a *Agent) Run(ctx context.Context) {
+// Start - функция запуска сбора и отправки метрик.
+func (a *Agent) Start(ctx context.Context) {
 	pollCount := 1
 
 	a.poolMetrics(pollCount)
@@ -70,6 +74,7 @@ func (a *Agent) Run(ctx context.Context) {
 	}
 }
 
+// sendMetricsOld - отправка метрик с помощью строки запроса.
 func (a *Agent) sendMetricsOld() {
 	a.RLock()
 	defer a.RUnlock()
@@ -89,6 +94,7 @@ func (a *Agent) sendMetricsOld() {
 	}
 }
 
+// sendMetricsBatch - отправка метрик через тело запроса.
 func (a *Agent) sendMetricsBatch() {
 	a.RLock()
 	defer a.RUnlock()
@@ -109,6 +115,7 @@ func (a *Agent) sendMetricsBatch() {
 	}
 }
 
+// Shutdown - коррктное завершение сервиса.
 func (a *Agent) Shutdown() {
 	close(a.jobs)
 }

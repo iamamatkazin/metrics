@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
+// main - точка входа в сервис Сервер сбора метрик.
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -37,6 +39,8 @@ func main() {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	exit := make(chan struct{})
+
+	go http.ListenAndServe(":7070", nil)
 
 	go func() {
 		slog.Info("Запуск сервера")

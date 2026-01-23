@@ -12,6 +12,7 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
+// updateMetric - сохранить метрику из строки запроса.
 func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 	metric := model.Metric{
 		ID:    chi.URLParam(r, "id"),
@@ -40,6 +41,7 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 	writeText(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
+// updateMetricJSON - сохранить метрику из тела запроса.
 func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric model.Metric
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
@@ -64,6 +66,7 @@ func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
 }
 
+// updatesMetricJSON - сохранить массив метрик из тела запроса.
 func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metrics []model.Metric
 	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
@@ -88,6 +91,7 @@ func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
 }
 
+// checkSign - проверка подписи.
 func checkSign(r *http.Request, key string, body any) error {
 	if key == "" {
 		return nil
@@ -108,6 +112,7 @@ func checkSign(r *http.Request, key string, body any) error {
 	return nil
 }
 
+// getMessage - получить сообщение для аудита.
 func getMessage(list []model.Metric, ip string) *model.Message {
 	if len(list) == 0 {
 		return nil

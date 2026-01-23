@@ -9,12 +9,13 @@ import (
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
-// реализация observer
+// Subscriber - структура файлового аудита.
 type Subscriber struct {
 	file *os.File
 	id   string
 }
 
+// New - конструктор файлового аудита.
 func New(cfg *sconfig.Config, id string) (*Subscriber, error) {
 	file, err := os.OpenFile(cfg.FileAudit, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -27,12 +28,14 @@ func New(cfg *sconfig.Config, id string) (*Subscriber, error) {
 	}, nil
 }
 
+// Send - отослать данные аудита в файл.
 func (s *Subscriber) Send(mes model.Message) {
 	if err := json.NewEncoder(s.file).Encode(mes); err != nil {
 		slog.Error("Ошибка записи логов в лог файл:", slog.Any("error", err))
 	}
 }
 
+// GetID - идентификатор файлового аудита.
 func (s *Subscriber) GetID() string {
 	return s.id
 }
