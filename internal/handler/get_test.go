@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,9 +11,16 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/assert/v2"
+	"github.com/iamamatkazin/metrics.git/internal/common"
 	"github.com/iamamatkazin/metrics.git/internal/model"
 	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	w http.ResponseWriter
+	r *http.Request
+	h *Handler
 )
 
 func prepareMetric(h *Handler, mType, name string) {
@@ -141,4 +149,52 @@ func TestHandler_getMetricJSON(t *testing.T) {
 			assert.Equal(t, tt.want.body, string(got))
 		})
 	}
+}
+
+func ExampleHandler_getMetricJSON() {
+	var metric model.Metric
+
+	// Передаем в теле запроса структуру вида:
+	// {"id": "Alloc", "type": "gauge"}
+	err := json.NewDecoder(r.Body).Decode(&metric)
+	if err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// Валидируем переданный тип метрики, он должен принимать одно из двух значений:
+	// Counter = "counter" или Gauge   = "gauge"
+	if err := metric.Validate(); err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// Получаем значение метрики
+	value, err := h.storage.GetMetric(r.Context(), metric.ID)
+	if err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// Проверяем значение метрики
+	if value != nil {
+		if metric.MType == model.Gauge {
+			metric.Value = value.Value
+		} else {
+			metric.Delta = value.Delta
+		}
+
+		body, err := json.Marshal(metric)
+		if err != nil {
+			writeText(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		// проверяем подпись
+		if h.cfg.Key != "" {
+			w.Header().Set("HashSHA256", string(common.CalcSign([]byte(h.cfg.Key), body)))
+		}
+
+		// отсылаем ответ
+	} else {
+		// отсылаем метрика не найдена
+	}
+
 }
