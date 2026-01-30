@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Ping - проверить доступность базы данных.
+// Ping проверяет доступность подключения к базе данных PostgreSQL.
 func (s *Storage) Ping(ctx context.Context) error {
 	if s.db == nil {
 		return nil

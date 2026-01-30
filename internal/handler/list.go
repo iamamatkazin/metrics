@@ -7,8 +7,8 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
-// listMetrics - обрабатывает входной запрос на получение html страницы с метриками.
-func (h *Handler) listMetrics(w http.ResponseWriter, r *http.Request) {
+// listMetrics обрабатывает входной запрос и возвращает HTML страницу со списком метрик.
+func (h *Handler) listMetrics(w http.ResponseWriter, _ *http.Request) {
 	var (
 		li  string
 		val any

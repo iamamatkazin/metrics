@@ -1,3 +1,6 @@
+// Package handler предоставляет HTTP обработчики для сервера метрик.
+// Реализует Chi роутер с эндпоинтами для получения, хранения и извлечения метрик.
+// Пакет поддерживает JSON и URL-encoded форматы запросов, а также gzip сжатие ответов.
 package handler
 
 import (
@@ -57,12 +60,12 @@ func (h *Handler) listRoute() {
 	h.Router.With(middleware.AllowContentType("application/json")).Post("/update/", h.updateMetricJSON)
 	h.Router.With(middleware.AllowContentType("application/json")).Post("/updates/", h.updatesMetricJSON)
 
-	h.Router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+	h.Router.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(http.StatusText(http.StatusNotFound)))
 	})
 
-	h.Router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+	h.Router.MethodNotAllowed(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
 	})
@@ -98,7 +101,7 @@ func writeHTML(w http.ResponseWriter, status int, html string) {
 	}
 }
 
-// Shutdown - коррктное завершение сервиса.
+// Shutdown - коректное завершение сервиса.
 func (h *Handler) Shutdown() {
 	h.storage.Shutdown()
 }

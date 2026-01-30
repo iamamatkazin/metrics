@@ -10,7 +10,8 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 )
 
-// poolMetrics - заполняем мапу метрик значениями из runtime.
+// poolMetrics собирает метрики runtime и обновляет внутреннее хранилище.
+// Включает метрики памяти, GC и счетчик опросов.
 func (a *Agent) poolMetrics(pollCount int) {
 	a.Lock()
 	defer a.Unlock()
@@ -49,7 +50,8 @@ func (a *Agent) poolMetrics(pollCount int) {
 	a.metrics[model.Gauge]["RandomValue"] = rand.Float64()
 }
 
-// poolGopsUtil - заполняем мапу метрик значениями из gopsutil.
+// poolGopsUtil собирает системные метрики через gopsutil.
+// Включает использование памяти и CPU.
 func (a *Agent) poolGopsUtil() {
 	a.Lock()
 	defer a.Unlock()

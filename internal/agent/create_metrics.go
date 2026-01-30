@@ -2,7 +2,8 @@ package agent
 
 import "github.com/iamamatkazin/metrics.git/internal/model"
 
-// createMetrics - инициализируем мапу с метриками.
+// createMetrics инициализирует карту метрик с начальными значениями.
+// Возвращает вложенную карту: тип метрики -> имя метрики -> значение.
 func createMetrics() map[string]map[string]float64 {
 	return map[string]map[string]float64{
 		model.Gauge: {

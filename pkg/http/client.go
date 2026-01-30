@@ -1,3 +1,6 @@
+// Package http предоставляет HTTP клиент для системы метрик.
+// Реализует кастомный HTTP клиент с логикой повторных попыток и HMAC подписью
+// для безопасной передачи метрик.
 package http
 
 import (
@@ -12,17 +15,17 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/common"
 )
 
-// Clienter - интерфейс отправки http запросов.
+// Clienter - интерфейс отправки HTTP запросов.
 type Clienter interface {
 	Post(ctx context.Context, url, contentType, key string, data any) (err error)
 }
 
-// Client - структура реализации кастомного http.Client.
+// Client - структура реализации кастомного HTTP клиента.
 type Client struct {
 	*http.Client
 }
 
-// New - конструктор для Client.
+// New создает новый экземпляр Client с заданным таймаутом.
 func New(timeout time.Duration) *Client {
 	return &Client{
 		Client: &http.Client{
@@ -32,7 +35,9 @@ func New(timeout time.Duration) *Client {
 	}
 }
 
-// Post - кастомная реализация метода POST.
+// Post отправляет HTTP POST запрос с метриками на сервер.
+// Поддерживает повторные попытки при временных сбоях и автоматически
+// добавляет HMAC-SHA256 подпись если указан ключ.
 func (c *Client) Post(ctx context.Context, url, contentType, key string, data any) (err error) {
 	var (
 		request *http.Request
@@ -53,13 +58,13 @@ func (c *Client) Post(ctx context.Context, url, contentType, key string, data an
 		return err
 	}
 
-	// в заголовках запроса сообщаем, что данные кодированы стандартной URL-схемой
+	// В заголовках запроса сообщаем, что данные кодированы стандартной URL-схемой
 	request.Header.Set("Content-Type", contentType)
 	if key != "" {
 		request.Header.Set("HashSHA256", common.CalcSign([]byte(key), body))
 	}
 
-	// отправляем запрос и получаем ответ
+	// Отправляем запрос и получаем ответ
 	response, err := c.Client.Do(request)
 	if err != nil {
 		return err
@@ -78,7 +83,7 @@ func (c *Client) Post(ctx context.Context, url, contentType, key string, data an
 	return nil
 }
 
-// newRequestWithContext - внутренний метод для метода POST, в котором реализован механизм Retriable.
+// newRequestWithContext создает HTTP запрос с контекстом и реализует механизм повторных попыток.
 func newRequestWithContext(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	timerRetriable := time.NewTimer(0)
 	count := 0

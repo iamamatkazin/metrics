@@ -1,3 +1,6 @@
+// Package memstorage предоставляет in-memory хранилище для метрик с опциональным
+// периодическим файловым бэкапом. Реализует интерфейс Storager и используется
+// как основной слой доступа к метрикам.
 package memstorage
 
 import (
@@ -11,15 +14,15 @@ import (
 	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
-// Storage - структура, реализующая интерфейс работы с метриками для хранилища в оперативной памяти.
+// Storage реализует интерфейс Storager для хранения метрик в памяти.
 type Storage struct {
-	metrics map[string]*model.Metric
-	sync.RWMutex
+	metrics  map[string]*model.Metric
 	cfg      *server.Config
 	fileStor *filestorage.Storage
+	sync.RWMutex
 }
 
-// New - конструктор для Storage.
+// New создает новое in-memory хранилище для метрик.
 func New(ctx context.Context, cfg *server.Config) (*Storage, error) {
 	fileStor, err := filestorage.New(cfg)
 	if err != nil {
@@ -46,7 +49,7 @@ func New(ctx context.Context, cfg *server.Config) (*Storage, error) {
 	return s, nil
 }
 
-// GetMetric - получить метрику по ее идентификатору.
+// GetMetric получает метрику по её идентификатору.
 func (s *Storage) GetMetric(_ context.Context, id string) (*model.Metric, error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -59,7 +62,7 @@ func (s *Storage) GetMetric(_ context.Context, id string) (*model.Metric, error)
 	return val, nil
 }
 
-// UpdateMetric - произвести сохранение новой метрики или измененить текущую.
+// UpdateMetric сохраняет новую метрику или изменяет существующую.
 func (s *Storage) UpdateMetric(_ context.Context, metric *model.Metric) error {
 	s.Lock()
 
@@ -88,7 +91,7 @@ func (s *Storage) UpdateMetric(_ context.Context, metric *model.Metric) error {
 	return nil
 }
 
-// ListMetrics - получить весь список метрик.
+// ListMetrics возвращает весь список метрик.
 func (s *Storage) ListMetrics() []model.Metric {
 	s.RLock()
 	defer s.RUnlock()
@@ -101,17 +104,17 @@ func (s *Storage) ListMetrics() []model.Metric {
 	return list
 }
 
-// UpdateMetrics - заглушка для метода.
-func (s *Storage) UpdateMetrics(ctx context.Context, metric []model.Metric) error {
+// UpdateMetrics не реализован для in-memory хранилища.
+func (*Storage) UpdateMetrics(_ context.Context, _ []model.Metric) error {
 	return nil
 }
 
-// Ping - заглушка для метода.
-func (s *Storage) Ping(ctx context.Context) error {
+// Ping не реализован для in-memory хранилища.
+func (*Storage) Ping(_ context.Context) error {
 	return nil
 }
 
-// Shutdown - завершить работу с хранилищем.
+// Shutdown коректно завершает работу с хранилищем.
 func (s *Storage) Shutdown() {
 	if s.fileStor != nil {
 		s.saveToFile()
@@ -119,7 +122,7 @@ func (s *Storage) Shutdown() {
 	}
 }
 
-// saveDump - периодическая запись метрик в файл.
+// saveDump выполняет периодическую запись метрик в файл.
 func (s *Storage) saveDump(ctx context.Context) {
 	storeIntervalTimer := time.NewTimer(time.Second * time.Duration(s.cfg.StoreInterval))
 	defer storeIntervalTimer.Stop()
@@ -138,7 +141,7 @@ func (s *Storage) saveDump(ctx context.Context) {
 	}
 }
 
-// saveToFile - записать метрики в файл.
+// saveToFile записывает метрики в файл.
 func (s *Storage) saveToFile() {
 	s.RLock()
 	defer s.RUnlock()

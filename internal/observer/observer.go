@@ -1,3 +1,6 @@
+// Package observer реализует паттерн Наблюдатель для системы аудита.
+// Предоставляет механизм публикации-подписки для уведомления нескольких подписчиков
+// (файловые и URL приемники) о событиях обновления метрик.
 package observer
 
 import (
@@ -7,26 +10,26 @@ import (
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
-// Observer - интерфейс патерна Наблюдатель.
+// Observer определяет интерфейс для подписчиков на события аудита.
 type Observer interface {
 	Send(model.Message)
 	GetID() string
 }
 
-// Publisher - интерфейс подписчиков на событие.
+// Publisher определяет интерфейс для управления наблюдателями.
 type Publisher interface {
 	register(Observer)
 	deregister(Observer)
 	notify()
 }
 
-// Event - реализация publisher.
+// Event представляет реализацию Publisher для рассылки аудит-сообщений.
 type Event struct {
 	observers map[string]Observer
 	Message   model.Message
 }
 
-// New - контструктор для структуры Event.
+// New создает новый экземпляр Event с настройками аудита.
 func New(cfg *sconfig.Config) (*Event, error) {
 	e := Event{}
 
@@ -46,7 +49,7 @@ func New(cfg *sconfig.Config) (*Event, error) {
 	return &e, nil
 }
 
-// register - регистрация нового наблюдателя.
+// register добавляет нового наблюдателя в список подписчиков.
 func (e *Event) register(o Observer) {
 	if e.observers == nil {
 		e.observers = make(map[string]Observer)
@@ -54,19 +57,19 @@ func (e *Event) register(o Observer) {
 	e.observers[o.GetID()] = o
 }
 
-// deregister - отписка наблюдателя.
+// deregister удаляет наблюдателя из списка подписчиков.
 func (e *Event) deregister(o Observer) {
 	delete(e.observers, o.GetID())
 }
 
-// notify - рассылка сообщения.
+// notify отправляет сообщение всем зарегистрированным наблюдателям.
 func (e *Event) notify() {
 	for _, observer := range e.observers {
 		observer.Send(e.Message)
 	}
 }
 
-// Send - отослать всем наблюдателям новое сообщение.
+// Send отправляет сообщение всем подписчикам.
 func (e *Event) Send(mes model.Message) {
 	e.Message = mes
 	e.notify()

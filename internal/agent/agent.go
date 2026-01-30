@@ -1,3 +1,6 @@
+// Package agent предоставляет функционал для сбора и отправки метрик.
+// Реализует фоновый воркер, который периодически опрашивает системные метрики,
+// а затем отправляет их на сервер сбора метрик через HTTP.
 package agent
 
 import (
@@ -12,14 +15,15 @@ import (
 	pkghttp "github.com/iamamatkazin/metrics.git/pkg/http"
 )
 
-// request - структура метрики для передачи данных внутри сервиса.
+// request представляет запрос метрики для внутренней передачи данных.
 type request struct {
+	metric      any
 	url         string
 	contentType string
-	metric      any
 }
 
-// Agent - структура агента.
+// Agent - основная структура агента сбора метрик.
+// Содержит конфигурацию, HTTP клиент и хранилище метрик.
 type Agent struct {
 	client  pkghttp.Clienter
 	cfg     *agent.Config
@@ -28,7 +32,8 @@ type Agent struct {
 	sync.RWMutex
 }
 
-// New - конструктор для Agent.
+// New создает новый экземпляр агента с заданной конфигурацией.
+// Агент начнет сбор метрик согласно настройкам конфигурации.
 func New(cfg *agent.Config) *Agent {
 	slog.Info("Запуск агента")
 	a := &Agent{
@@ -41,7 +46,8 @@ func New(cfg *agent.Config) *Agent {
 	return a
 }
 
-// Start - функция запуска сбора и отправки метрик.
+// Start запускает процесс сбора и отправки метрик.
+// Запускает два цикла на основе тикеров: один для опроса метрик и один для отправки.
 func (a *Agent) Start(ctx context.Context) {
 	pollCount := 1
 
@@ -74,7 +80,7 @@ func (a *Agent) Start(ctx context.Context) {
 	}
 }
 
-// sendMetricsOld - отправка метрик с помощью строки запроса.
+// sendMetricsOld отправляет метрики через параметры URL (устаревший метод).
 func (a *Agent) sendMetricsOld() {
 	a.RLock()
 	defer a.RUnlock()
@@ -94,7 +100,7 @@ func (a *Agent) sendMetricsOld() {
 	}
 }
 
-// sendMetricsBatch - отправка метрик через тело запроса.
+// sendMetricsBatch отправляет несколько метрик в одном JSON запросе.
 func (a *Agent) sendMetricsBatch() {
 	a.RLock()
 	defer a.RUnlock()
@@ -115,7 +121,7 @@ func (a *Agent) sendMetricsBatch() {
 	}
 }
 
-// Shutdown - коррктное завершение сервиса.
+// Shutdown коректно останавливает агента и закрывает канал jobs.
 func (a *Agent) Shutdown() {
 	close(a.jobs)
 }
