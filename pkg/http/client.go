@@ -10,36 +10,34 @@ import (
 	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/common"
-	"github.com/iamamatkazin/metrics.git/pkg/config/agent"
 )
 
+// Clienter - интерфейс отправки http запросов.
 type Clienter interface {
-	Post(ctx context.Context, url, contentType string, data any) (err error)
+	Post(ctx context.Context, url, contentType, key string, data any) (err error)
 }
 
+// Client - структура реализации кастомного http.Client.
 type Client struct {
 	*http.Client
-	cfg *agent.Config
 }
 
-func New(cfg *agent.Config) *Client {
+// New - конструктор для Client.
+func New(timeout time.Duration) *Client {
 	return &Client{
-		cfg: cfg,
 		Client: &http.Client{
-			Timeout:   cfg.Timeout,
+			Timeout:   timeout,
 			Transport: &http.Transport{},
 		},
 	}
 }
 
-func (c *Client) Post(ctx context.Context, url, contentType string, data any) (err error) {
+// Post - кастомная реализация метода POST.
+func (c *Client) Post(ctx context.Context, url, contentType, key string, data any) (err error) {
 	var (
 		request *http.Request
 		body    []byte
 	)
-
-	ctx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
-	defer cancel()
 
 	if data == nil {
 		request, err = newRequestWithContext(ctx, http.MethodPost, url, http.NoBody)
@@ -48,6 +46,7 @@ func (c *Client) Post(ctx context.Context, url, contentType string, data any) (e
 		if err != nil {
 			return err
 		}
+
 		request, err = newRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	}
 	if err != nil {
@@ -56,8 +55,8 @@ func (c *Client) Post(ctx context.Context, url, contentType string, data any) (e
 
 	// в заголовках запроса сообщаем, что данные кодированы стандартной URL-схемой
 	request.Header.Set("Content-Type", contentType)
-	if c.cfg.Key != "" {
-		request.Header.Set("HashSHA256", common.CalcSign([]byte(c.cfg.Key), body))
+	if key != "" {
+		request.Header.Set("HashSHA256", common.CalcSign([]byte(key), body))
 	}
 
 	// отправляем запрос и получаем ответ
@@ -79,6 +78,7 @@ func (c *Client) Post(ctx context.Context, url, contentType string, data any) (e
 	return nil
 }
 
+// newRequestWithContext - внутренний метод для метода POST, в котором реализован механизм Retriable.
 func newRequestWithContext(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	timerRetriable := time.NewTimer(0)
 	count := 0

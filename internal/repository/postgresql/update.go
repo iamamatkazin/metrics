@@ -8,6 +8,7 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
+// UpdateMetric - создание метрики, если она есть, то изменение.
 func (s *Storage) UpdateMetric(ctx context.Context, metric *model.Metric) error {
 	if s.db == nil {
 		return nil
@@ -26,6 +27,7 @@ func (s *Storage) UpdateMetric(ctx context.Context, metric *model.Metric) error 
 	return tx.Commit()
 }
 
+// UpdateMetrics - создание массива метрик, если они есть, то изменение.
 func (s *Storage) UpdateMetrics(ctx context.Context, metrics []model.Metric) error {
 	if s.db == nil {
 		return nil
@@ -46,6 +48,7 @@ func (s *Storage) UpdateMetrics(ctx context.Context, metrics []model.Metric) err
 	return tx.Commit()
 }
 
+// updateMetric - внутренний метод создания метрики, если она есть, то изменение.
 func (s *Storage) updateMetric(ctx context.Context, tx *sql.Tx, metric model.Metric) error {
 	query := `
 		INSERT INTO metrics (id, mtype, val, delta)
@@ -80,6 +83,7 @@ func (s *Storage) updateMetric(ctx context.Context, tx *sql.Tx, metric model.Met
 	return nil
 }
 
+// retryableUpdateTx - проверка возможности повторного запроса в базу данных.
 func retryableUpdateTx(ctx context.Context, tx *sql.Tx, query string, metric model.Metric) error {
 	timerRetryable := time.NewTimer(0)
 	count := 0

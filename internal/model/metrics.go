@@ -23,6 +23,7 @@ type Metric struct {
 	Hash  string   `json:"-"`
 }
 
+// Validate - валидация структуры метрик.
 func (m *Metric) Validate() error {
 	if m.MType != Gauge && m.MType != Counter {
 		return fmt.Errorf("неизвестный тип метрики: %s", m.MType)
@@ -31,6 +32,7 @@ func (m *Metric) Validate() error {
 	return nil
 }
 
+// ValidateJSON - валидация структуры метрик в формате json.
 func (m *Metric) ValidateJSON() error {
 	if m.MType != Gauge && m.MType != Counter {
 		return fmt.Errorf("неизвестный тип метрики: %s", m.MType)
@@ -47,6 +49,7 @@ func (m *Metric) ValidateJSON() error {
 	return nil
 }
 
+// Normalize - нормализация полей со значениями метрики.
 func (m *Metric) Normalize(val string) error {
 	if m.MType == Gauge {
 		value, err := strconv.ParseFloat(val, 64)

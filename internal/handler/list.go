@@ -7,6 +7,7 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
+// listMetrics - обрабатывает входной запрос на получение html страницы с метриками.
 func (h *Handler) listMetrics(w http.ResponseWriter, r *http.Request) {
 	var (
 		li  string

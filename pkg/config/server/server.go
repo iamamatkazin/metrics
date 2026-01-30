@@ -2,19 +2,25 @@ package server
 
 import (
 	"flag"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 )
 
+// Config - структура конфигурации сервера.
 type Config struct {
 	Address         string `env:"ADDRESS"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	Key             string `env:"KEY"`
-	StoreInterval   int    `env:"STORE_INTERVAL"`
-	Restore         bool   `env:"RESTORE"`
+	FileAudit       string `env:"AUDIT_FILE"`
+	URLAudit        string `env:"AUDIT_URL"`
+	Timeout         time.Duration
+	StoreInterval   int  `env:"STORE_INTERVAL"`
+	Restore         bool `env:"RESTORE"`
 }
 
+// New - конструктор для Config.
 func New() (*Config, error) {
 	address := flag.String("a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
 	interval := flag.Int("i", 300, "интервал времени в секундах, по истечении которого текущие показания сервера сохраняются на диск")
@@ -22,6 +28,9 @@ func New() (*Config, error) {
 	restore := flag.Bool("r", true, "булево значение (true/false), определяющее, следует ли загружать ранее сохранённые значения из указанного файла при старте сервера")
 	database := flag.String("d", "", "строка с адресом подключения к БД") // host=localhost user=postgres password=postgres dbname=metrics sslmode=disable
 	key := flag.String("k", "", "ключ подписи данных")
+	fileAudit := flag.String("audit-file", "", "путь к файлу, в который сохраняются логи аудита")
+	urlAudit := flag.String("audit-url", "", "полный URL, по которому отправляются логи аудита")
+
 	flag.Parse()
 
 	cfg := &Config{
@@ -31,6 +40,9 @@ func New() (*Config, error) {
 		Key:             *key,
 		Restore:         *restore,
 		DatabaseDSN:     *database,
+		FileAudit:       *fileAudit,
+		URLAudit:        *urlAudit,
+		Timeout:         time.Second * 10,
 	}
 
 	if err := env.Parse(cfg); err != nil {

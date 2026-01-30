@@ -7,18 +7,27 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/iamamatkazin/metrics.git/internal/observer"
 	"github.com/iamamatkazin/metrics.git/internal/repository"
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
+// Handler - главная структура приложения.
 type Handler struct {
 	storage repository.Storager
 	Router  *chi.Mux
 	cfg     *sconfig.Config
+	audit   *observer.Event
 }
 
+// New - конструктор для Handler.
 func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 	storage, err := repository.New(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	audit, err := observer.New(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -26,6 +35,7 @@ func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 	h := &Handler{
 		storage: storage,
 		cfg:     cfg,
+		audit:   audit,
 	}
 
 	h.Router = chi.NewRouter()
@@ -34,6 +44,7 @@ func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 	return h, nil
 }
 
+// listRoute - формирует список роутов.
 func (h *Handler) listRoute() {
 	h.Router.Use(middlewareLog)
 	h.Router.Use(middlewareGzip)
@@ -57,6 +68,7 @@ func (h *Handler) listRoute() {
 	})
 }
 
+// writeText - формирует ответ сервера в виде текста.
 func writeText(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
@@ -66,6 +78,7 @@ func writeText(w http.ResponseWriter, status int, message string) {
 	}
 }
 
+// writeJSON - формирует ответ сервера в виде json структуры.
 func writeJSON(w http.ResponseWriter, status int, body []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -75,6 +88,7 @@ func writeJSON(w http.ResponseWriter, status int, body []byte) {
 	}
 }
 
+// writeHTML - формирует ответ сервера в виде html структуры.
 func writeHTML(w http.ResponseWriter, status int, html string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
@@ -84,6 +98,7 @@ func writeHTML(w http.ResponseWriter, status int, html string) {
 	}
 }
 
+// Shutdown - коррктное завершение сервиса.
 func (h *Handler) Shutdown() {
 	h.storage.Shutdown()
 }

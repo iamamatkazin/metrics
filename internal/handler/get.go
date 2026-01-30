@@ -10,6 +10,7 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
+// getMetric - обрабатывает входной запрос на получение значения метрики по ее идентификатору.
 func (h *Handler) getMetric(w http.ResponseWriter, r *http.Request) {
 	code := http.StatusNotFound
 	message := http.StatusText(http.StatusNotFound)
@@ -33,6 +34,7 @@ func (h *Handler) getMetric(w http.ResponseWriter, r *http.Request) {
 	writeText(w, code, message)
 }
 
+// getMetricJSON - обрабатывает входной запрос на получение метрики по ее идентификатору.
 func (h *Handler) getMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric model.Metric
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {

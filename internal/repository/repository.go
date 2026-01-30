@@ -9,6 +9,7 @@ import (
 	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
+// Storager - интерфейс работы с метриками для разных хранилищ.
 type Storager interface {
 	GetMetric(ctx context.Context, id string) (*model.Metric, error)
 	UpdateMetric(ctx context.Context, metric *model.Metric) error
@@ -18,6 +19,7 @@ type Storager interface {
 	Shutdown()
 }
 
+// Storage - структура, которая хранит в себе перечень всех возможных хранилищ для метрик.
 type Storage struct {
 	cfg      *server.Config
 	memStor  *memstorage.Storage
@@ -25,6 +27,7 @@ type Storage struct {
 	storages []Storager
 }
 
+// New - конструктор для Storage.
 func New(ctx context.Context, cfg *server.Config) (*Storage, error) {
 	dbStor, err := postgresql.New(cfg)
 	if err != nil {
@@ -50,12 +53,14 @@ func New(ctx context.Context, cfg *server.Config) (*Storage, error) {
 	return s, nil
 }
 
+// Shutdown - завершение работы всех доступных хранилищ.
 func (s *Storage) Shutdown() {
 	for _, storage := range s.storages {
 		storage.Shutdown()
 	}
 }
 
+// GetMetric - получить метрику по ее идентификатору.
 func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, error) {
 	for _, storage := range s.storages {
 		metric, err := storage.GetMetric(ctx, id)
@@ -71,6 +76,7 @@ func (s *Storage) GetMetric(ctx context.Context, id string) (*model.Metric, erro
 	return nil, nil
 }
 
+// UpdateMetric - создание метрики, если она есть, то изменение.
 func (s *Storage) UpdateMetric(ctx context.Context, metric *model.Metric) error {
 	for _, storage := range s.storages {
 		if err := storage.UpdateMetric(ctx, metric); err != nil {
@@ -81,6 +87,7 @@ func (s *Storage) UpdateMetric(ctx context.Context, metric *model.Metric) error 
 	return nil
 }
 
+// UpdateMetrics - создание массива метрик, если они есть, то изменение.
 func (s *Storage) UpdateMetrics(ctx context.Context, metrics []model.Metric) error {
 	for _, storage := range s.storages {
 		if err := storage.UpdateMetrics(ctx, metrics); err != nil {
@@ -91,6 +98,7 @@ func (s *Storage) UpdateMetrics(ctx context.Context, metrics []model.Metric) err
 	return nil
 }
 
+// ListMetrics - получить список метрик.
 func (s *Storage) ListMetrics() []model.Metric {
 	for _, storage := range s.storages {
 		if list := storage.ListMetrics(); list != nil {
@@ -101,6 +109,7 @@ func (s *Storage) ListMetrics() []model.Metric {
 	return nil
 }
 
+// Ping - проверить доступность базы данных.
 func (s *Storage) Ping(ctx context.Context) error {
 	for _, storage := range s.storages {
 		if err := storage.Ping(ctx); err != nil {

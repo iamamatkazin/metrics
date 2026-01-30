@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
@@ -12,6 +14,7 @@ import (
 	aconfig "github.com/iamamatkazin/metrics.git/pkg/config/agent"
 )
 
+// main - точка входа в сервис Агент.
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -38,7 +41,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		a.Run(ctx)
+		a.Start(ctx)
 		a.Shutdown()
 	}()
 
@@ -49,6 +52,8 @@ func main() {
 			a.Worker()
 		}
 	}()
+
+	go http.ListenAndServe(":7171", nil)
 
 	wg.Wait()
 

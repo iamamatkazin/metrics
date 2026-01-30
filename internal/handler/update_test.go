@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/assert/v2"
+	"github.com/iamamatkazin/metrics.git/internal/model"
 	"github.com/iamamatkazin/metrics.git/pkg/config/server"
 	"github.com/stretchr/testify/require"
 )
@@ -125,4 +127,63 @@ func Test_checkSign(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ExampleHandler_updateMetricJSON() {
+	var metric model.Metric
+
+	// Передаем в теле запроса структуру вида:
+	// {"id": "Alloc", "type": "gauge", "value": 12.4}
+	err := json.NewDecoder(r.Body).Decode(&metric)
+	if err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// Валидируем переданный тип метрики, он должен принимать одно из двух значений:
+	// Counter = "counter" или Gauge   = "gauge"
+	if err := metric.ValidateJSON(); err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// Обновляем метрику в системе
+	err = h.storage.UpdateMetric(r.Context(), &metric)
+	if err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// Отправляем сообщение в систему аудита
+	if message := getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
+		h.audit.Send(*message)
+	}
+
+	// Возвращаем ответ клиенту
+}
+
+func ExampleHandler_updatesMetricJSON() {
+	var metrics []model.Metric
+
+	// Передаем в теле запроса структуру вида:
+	// [{"id": "Alloc", "type": "gauge", "value": 12.4}]
+	err := json.NewDecoder(r.Body).Decode(&metrics)
+	if err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// проверяем подпись
+	if err := checkSign(r, h.cfg.Key, metrics); err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// Обновляем метрики в системе
+	err = h.storage.UpdateMetrics(r.Context(), metrics)
+	if err != nil {
+		// Обрабатываем ошибку
+	}
+
+	// Отправляем сообщение в систему аудита
+	if message := getMessage(metrics, r.RemoteAddr); message != nil {
+		h.audit.Send(*message)
+	}
+
+	// Возвращаем ответ клиенту
 }

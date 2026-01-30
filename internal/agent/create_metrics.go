@@ -2,6 +2,7 @@ package agent
 
 import "github.com/iamamatkazin/metrics.git/internal/model"
 
+// createMetrics - инициализируем мапу с метриками.
 func createMetrics() map[string]map[string]float64 {
 	return map[string]map[string]float64{
 		model.Gauge: {
