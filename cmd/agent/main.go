@@ -17,13 +17,22 @@ import (
 	"syscall"
 
 	"github.com/iamamatkazin/metrics.git/internal/agent"
+	"github.com/iamamatkazin/metrics.git/internal/common"
 	aconfig "github.com/iamamatkazin/metrics.git/pkg/config/agent"
+)
+
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
 )
 
 // main - точка входа в приложение агента.
 // Функция инициализирует конфигурацию, создает экземпляр агента
 // и запускает фоновые процессы сбора и отправки метрик.
 func main() {
+	common.PrintBuild(buildVersion, buildDate, buildCommit)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

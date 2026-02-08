@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 )
 
 // CalcSign вычисляет HMAC-SHA256 подпись для данных.
@@ -14,4 +15,11 @@ func CalcSign(key, src []byte) string {
 	h.Write(src)
 
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// PrintBuild выводит в консоль информацию о сборке.
+func PrintBuild(version, date, commit string) {
+	fmt.Printf("Build version: %s\n", version)
+	fmt.Printf("Build date: %s\n", date)
+	fmt.Printf("Build commit: %s\n", commit)
 }

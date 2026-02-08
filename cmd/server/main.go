@@ -14,14 +14,23 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/iamamatkazin/metrics.git/internal/common"
 	"github.com/iamamatkazin/metrics.git/internal/handler"
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
+)
+
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
 )
 
 // main - точка входа в приложение сервера метрик.
 // Функция загружает конфигурацию, инициализирует обработчики,
 // запускает HTTP сервер и ожидает сигнала остановки.
 func main() {
+	common.PrintBuild(buildVersion, buildDate, buildCommit)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
