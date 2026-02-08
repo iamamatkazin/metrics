@@ -2,7 +2,6 @@
 package custom
 
 import (
-	"fmt"
 	"go/ast"
 	"go/types"
 
@@ -19,7 +18,6 @@ var Exit = &analysis.Analyzer{
 // run - произоводит синтаксический анализ содержимого файла main.go пакета main на предмет
 // запрета использования прямого вызова os.Exit.
 func run(pass *analysis.Pass) (any, error) {
-	fmt.Println(pass.Pkg.Name(), pass.Files)
 	if pass.Pkg.Name() != "main" {
 		return nil, nil
 	}
@@ -50,7 +48,7 @@ loop:
 		case *ast.Ident:
 			ident = fun
 		case *ast.SelectorExpr:
-			ident = fun.Sel // Sel — это *ast.Ident для имени функции
+			ident = fun.Sel
 		default:
 			return true
 		}

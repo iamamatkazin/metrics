@@ -42,12 +42,23 @@ func main() {
 		Handler: app.Router,
 	}
 
+	serverPprof := &http.Server{
+		Addr:    ":7070",
+		Handler: nil,
+	}
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	exit := make(chan struct{})
 
-	go http.ListenAndServe(":7070", nil)
+	go func() {
+		slog.Info("Запуск сервера профилирования")
+		if err := serverPprof.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Ошибка запуска сервера профилирования:", slog.Any("error", err))
+			close(exit)
+		}
+	}()
 
 	go func() {
 		slog.Info("Запуск сервера")
@@ -64,6 +75,11 @@ func main() {
 		if err := server.Shutdown(ctx); err != nil {
 			slog.Error("Ошибка остановки сервера:", slog.Any("error", err))
 		}
+
+		if err := serverPprof.Shutdown(ctx); err != nil {
+			slog.Error("Ошибка остановки сервера профилирования:", slog.Any("error", err))
+		}
+
 		cancel()
 
 	case <-exit:

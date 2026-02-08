@@ -34,8 +34,9 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if message := getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
+	if message := h.getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
 		h.audit.Send(*message)
+		h.poolMessage.Put(message)
 	}
 
 	writeText(w, http.StatusOK, http.StatusText(http.StatusOK))
@@ -59,8 +60,9 @@ func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if message := getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
+	if message := h.getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
 		h.audit.Send(*message)
+		h.poolMessage.Put(message)
 	}
 
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
@@ -84,8 +86,9 @@ func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if message := getMessage(metrics, r.RemoteAddr); message != nil {
+	if message := h.getMessage(metrics, r.RemoteAddr); message != nil {
 		h.audit.Send(*message)
+		h.poolMessage.Put(message)
 	}
 
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
@@ -113,7 +116,7 @@ func checkSign(r *http.Request, key string, body any) error {
 }
 
 // getMessage создает сообщение для аудита.
-func getMessage(list []model.Metric, ip string) *model.Message {
+func (h *Handler) getMessage(list []model.Metric, ip string) *model.Message {
 	if len(list) == 0 {
 		return nil
 	}
@@ -123,9 +126,10 @@ func getMessage(list []model.Metric, ip string) *model.Message {
 		metrics = append(metrics, item.ID)
 	}
 
-	return &model.Message{
-		Date:    time.Now().Unix(),
-		Metrics: metrics,
-		IP:      ip,
-	}
+	message := h.poolMessage.Get()
+	message.Date = time.Now().Unix()
+	message.Metrics = metrics
+	message.IP = ip
+
+	return message
 }

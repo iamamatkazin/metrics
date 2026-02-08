@@ -152,7 +152,7 @@ func ExampleHandler_updateMetricJSON() {
 	}
 
 	// Отправляем сообщение в систему аудита
-	if message := getMessage([]model.Metric{metric}, req.RemoteAddr); message != nil {
+	if message := hand.getMessage([]model.Metric{metric}, req.RemoteAddr); message != nil {
 		hand.audit.Send(*message)
 	}
 
@@ -181,7 +181,7 @@ func ExampleHandler_updatesMetricJSON() {
 	}
 
 	// Отправляем сообщение в систему аудита
-	if message := getMessage(metrics, req.RemoteAddr); message != nil {
+	if message := hand.getMessage(metrics, req.RemoteAddr); message != nil {
 		hand.audit.Send(*message)
 	}
 

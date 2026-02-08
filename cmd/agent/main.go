@@ -33,9 +33,25 @@ func main() {
 		return
 	}
 
+	serverPprof := &http.Server{
+		Addr:    ":7171",
+		Handler: nil,
+	}
+
+	go func() {
+		slog.Info("Запуск сервера профилирования")
+		if err := serverPprof.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Ошибка запуска сервера профилирования:", slog.Any("error", err))
+		}
+	}()
+
 	go func() {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+		if err := serverPprof.Shutdown(ctx); err != nil {
+			slog.Error("Ошибка остановки сервера профилирования:", slog.Any("error", err))
+		}
 
 		<-quit
 		slog.Info("Начало остановки агента...")
@@ -60,8 +76,6 @@ func main() {
 			a.Worker()
 		}
 	}()
-
-	go http.ListenAndServe(":7171", nil)
 
 	wg.Wait()
 
