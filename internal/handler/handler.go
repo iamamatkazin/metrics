@@ -16,6 +16,7 @@ import (
 )
 
 // Handler - главная структура приложения.
+// generate:reset
 type Handler struct {
 	storage repository.Storager
 	Router  *chi.Mux

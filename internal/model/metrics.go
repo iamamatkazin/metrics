@@ -15,6 +15,7 @@ const (
 // Delta и Value объявлены через указатели,
 // чтобы отличать значение "0" от незаданного значения
 // и соответственно не кодировать в структуру.
+// generate:reset
 type Metric struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`
