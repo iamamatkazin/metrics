@@ -1,3 +1,5 @@
+// Package file предоставляет файловый аудит-подписчик для логирования изменений метрик.
+// Реализует интерфейс Observer для записи аудит-сообщений в файл.
 package file
 
 import (
@@ -15,7 +17,7 @@ type Subscriber struct {
 	id   string
 }
 
-// New - конструктор файлового аудита.
+// New создает новый экземпляр файлового аудита.
 func New(cfg *sconfig.Config, id string) (*Subscriber, error) {
 	file, err := os.OpenFile(cfg.FileAudit, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -28,14 +30,14 @@ func New(cfg *sconfig.Config, id string) (*Subscriber, error) {
 	}, nil
 }
 
-// Send - отослать данные аудита в файл.
+// Send записывает данные аудита в файл.
 func (s *Subscriber) Send(mes model.Message) {
 	if err := json.NewEncoder(s.file).Encode(mes); err != nil {
 		slog.Error("Ошибка записи логов в лог файл:", slog.Any("error", err))
 	}
 }
 
-// GetID - идентификатор файлового аудита.
+// GetID возвращает идентификатор файлового аудита.
 func (s *Subscriber) GetID() string {
 	return s.id
 }

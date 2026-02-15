@@ -79,9 +79,9 @@ func TestHandler_updateMetric(t *testing.T) {
 
 func Test_checkSign(t *testing.T) {
 	type args struct {
+		body any
 		key  string
 		hash string
-		body any
 	}
 	tests := []struct {
 		name    string
@@ -134,26 +134,26 @@ func ExampleHandler_updateMetricJSON() {
 
 	// Передаем в теле запроса структуру вида:
 	// {"id": "Alloc", "type": "gauge", "value": 12.4}
-	err := json.NewDecoder(r.Body).Decode(&metric)
+	err := json.NewDecoder(req.Body).Decode(&metric)
 	if err != nil {
 		// Обрабатываем ошибку
 	}
 
 	// Валидируем переданный тип метрики, он должен принимать одно из двух значений:
 	// Counter = "counter" или Gauge   = "gauge"
-	if err := metric.ValidateJSON(); err != nil {
+	if err = metric.ValidateJSON(); err != nil {
 		// Обрабатываем ошибку
 	}
 
 	// Обновляем метрику в системе
-	err = h.storage.UpdateMetric(r.Context(), &metric)
+	err = hand.storage.UpdateMetric(req.Context(), &metric)
 	if err != nil {
 		// Обрабатываем ошибку
 	}
 
 	// Отправляем сообщение в систему аудита
-	if message := getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
-		h.audit.Send(*message)
+	if message := hand.getMessage([]model.Metric{metric}, req.RemoteAddr); message != nil {
+		hand.audit.Send(*message)
 	}
 
 	// Возвращаем ответ клиенту
@@ -164,25 +164,25 @@ func ExampleHandler_updatesMetricJSON() {
 
 	// Передаем в теле запроса структуру вида:
 	// [{"id": "Alloc", "type": "gauge", "value": 12.4}]
-	err := json.NewDecoder(r.Body).Decode(&metrics)
+	err := json.NewDecoder(req.Body).Decode(&metrics)
 	if err != nil {
 		// Обрабатываем ошибку
 	}
 
 	// проверяем подпись
-	if err := checkSign(r, h.cfg.Key, metrics); err != nil {
+	if err = checkSign(req, hand.cfg.Key, metrics); err != nil {
 		// Обрабатываем ошибку
 	}
 
 	// Обновляем метрики в системе
-	err = h.storage.UpdateMetrics(r.Context(), metrics)
+	err = hand.storage.UpdateMetrics(req.Context(), metrics)
 	if err != nil {
 		// Обрабатываем ошибку
 	}
 
 	// Отправляем сообщение в систему аудита
-	if message := getMessage(metrics, r.RemoteAddr); message != nil {
-		h.audit.Send(*message)
+	if message := hand.getMessage(metrics, req.RemoteAddr); message != nil {
+		hand.audit.Send(*message)
 	}
 
 	// Возвращаем ответ клиенту

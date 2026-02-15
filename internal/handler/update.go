@@ -12,7 +12,7 @@ import (
 	"github.com/iamamatkazin/metrics.git/internal/model"
 )
 
-// updateMetric - сохранить метрику из строки запроса.
+// updateMetric сохраняет метрику из строки запроса.
 func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 	metric := model.Metric{
 		ID:    chi.URLParam(r, "id"),
@@ -34,14 +34,15 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if message := getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
+	if message := h.getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
 		h.audit.Send(*message)
+		h.poolMessage.Put(message)
 	}
 
 	writeText(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
-// updateMetricJSON - сохранить метрику из тела запроса.
+// updateMetricJSON сохраняет метрику из тела запроса в формате JSON.
 func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metric model.Metric
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
@@ -59,14 +60,15 @@ func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if message := getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
+	if message := h.getMessage([]model.Metric{metric}, r.RemoteAddr); message != nil {
 		h.audit.Send(*message)
+		h.poolMessage.Put(message)
 	}
 
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
 }
 
-// updatesMetricJSON - сохранить массив метрик из тела запроса.
+// updatesMetricJSON сохраняет массив метрик из тела запроса в формате JSON.
 func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
 	var metrics []model.Metric
 	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
@@ -84,14 +86,15 @@ func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if message := getMessage(metrics, r.RemoteAddr); message != nil {
+	if message := h.getMessage(metrics, r.RemoteAddr); message != nil {
 		h.audit.Send(*message)
+		h.poolMessage.Put(message)
 	}
 
 	writeJSON(w, http.StatusOK, []byte("{\"status\": \"OK\"}"))
 }
 
-// checkSign - проверка подписи.
+// checkSign проверяет HMAC-SHA256 подпись запроса.
 func checkSign(r *http.Request, key string, body any) error {
 	if key == "" {
 		return nil
@@ -106,14 +109,14 @@ func checkSign(r *http.Request, key string, body any) error {
 	headerValue := r.Header.Get("HashSHA256")
 
 	if !reflect.DeepEqual(calcValue, headerValue) {
-		return fmt.Errorf("подпись не верна")
+		return fmt.Errorf("подпись неверна")
 	}
 
 	return nil
 }
 
-// getMessage - получить сообщение для аудита.
-func getMessage(list []model.Metric, ip string) *model.Message {
+// getMessage создает сообщение для аудита.
+func (h *Handler) getMessage(list []model.Metric, ip string) *model.Message {
 	if len(list) == 0 {
 		return nil
 	}
@@ -123,9 +126,10 @@ func getMessage(list []model.Metric, ip string) *model.Message {
 		metrics = append(metrics, item.ID)
 	}
 
-	return &model.Message{
-		Date:    time.Now().Unix(),
-		Metrics: metrics,
-		IP:      ip,
-	}
+	message := h.poolMessage.Get()
+	message.Date = time.Now().Unix()
+	message.Metrics = metrics
+	message.IP = ip
+
+	return message
 }

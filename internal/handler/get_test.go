@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	w http.ResponseWriter
-	r *http.Request
-	h *Handler
+	rw   http.ResponseWriter
+	req  *http.Request
+	hand *Handler
 )
 
 func prepareMetric(h *Handler, mType, name string) {
@@ -99,24 +99,28 @@ func TestHandler_getMetricJSON(t *testing.T) {
 		metricName string
 		request    string
 		data       string
-		value      float64
+		metricType string
 		want       want
+		value      float64
 	}{
-		// {
-		// 	name:       "simple test #1",
-		// 	request:    "/value/",
-		// 	data:       "{\"id\":\"testCounter\",\"type\":\"gauge\"}",
-		// 	metricName: "testCounter",
-		// 	value:      100,
-		// 	want:       want{statusCode: 200, contentType: "application/json", body: "{\"id\":\"testCounter\",\"type\":\"gauge\",\"value\":100}"},
-		// },
-		// {
-		// 	name:       "simple test #2",
-		// 	request:    "/value/",
-		// 	data:       "{\"id\":\"testCounter\",\"type\":\"gauge\"}",
-		// 	metricName: "testCounter",
-		// 	value:      100,
-		// },
+		{
+			name:       "simple test #1",
+			request:    "/value/",
+			data:       "{\"id\":\"testCounter\",\"type\":\"gauge\"}",
+			metricName: "testCounter",
+			metricType: model.Gauge,
+			value:      100,
+			want:       want{statusCode: 200, contentType: "application/json", body: "{\"id\":\"testCounter\",\"type\":\"gauge\",\"value\":100}"},
+		},
+		{
+			name:       "simple test #2",
+			request:    "/value/",
+			data:       "{\"id\":\"testCounter\",\"type\":\"counter\"}",
+			metricName: "testCounter",
+			value:      100,
+			metricType: model.Counter,
+			want:       want{statusCode: 200, contentType: "application/json", body: "{\"id\":\"testCounter\",\"type\":\"counter\",\"delta\":100}"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -125,11 +129,20 @@ func TestHandler_getMetricJSON(t *testing.T) {
 				t.Fatalf("could not construct receiver type: %v", err)
 			}
 
-			h.storage.UpdateMetric(context.Background(), &model.Metric{
-				ID:    tt.metricName,
-				MType: model.Gauge,
-				Value: &tt.value,
-			})
+			if tt.metricType == model.Gauge {
+				h.storage.UpdateMetric(context.Background(), &model.Metric{
+					ID:    tt.metricName,
+					MType: tt.metricType,
+					Value: &tt.value,
+				})
+			} else {
+				delta := int(tt.value)
+				h.storage.UpdateMetric(context.Background(), &model.Metric{
+					ID:    tt.metricName,
+					MType: tt.metricType,
+					Delta: &delta,
+				})
+			}
 
 			r := httptest.NewRequest(http.MethodGet, tt.request, strings.NewReader(tt.data))
 			w := httptest.NewRecorder()
@@ -156,19 +169,19 @@ func ExampleHandler_getMetricJSON() {
 
 	// Передаем в теле запроса структуру вида:
 	// {"id": "Alloc", "type": "gauge"}
-	err := json.NewDecoder(r.Body).Decode(&metric)
+	err := json.NewDecoder(req.Body).Decode(&metric)
 	if err != nil {
 		// Обрабатываем ошибку
 	}
 
 	// Валидируем переданный тип метрики, он должен принимать одно из двух значений:
 	// Counter = "counter" или Gauge   = "gauge"
-	if err := metric.Validate(); err != nil {
+	if err = metric.Validate(); err != nil {
 		// Обрабатываем ошибку
 	}
 
 	// Получаем значение метрики
-	value, err := h.storage.GetMetric(r.Context(), metric.ID)
+	value, err := hand.storage.GetMetric(req.Context(), metric.ID)
 	if err != nil {
 		// Обрабатываем ошибку
 	}
@@ -183,13 +196,13 @@ func ExampleHandler_getMetricJSON() {
 
 		body, err := json.Marshal(metric)
 		if err != nil {
-			writeText(w, http.StatusInternalServerError, err.Error())
+			writeText(rw, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		// проверяем подпись
-		if h.cfg.Key != "" {
-			w.Header().Set("HashSHA256", string(common.CalcSign([]byte(h.cfg.Key), body)))
+		if hand.cfg.Key != "" {
+			rw.Header().Set("HashSHA256", string(common.CalcSign([]byte(hand.cfg.Key), body)))
 		}
 
 		// отсылаем ответ

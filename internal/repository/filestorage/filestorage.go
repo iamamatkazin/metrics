@@ -1,3 +1,6 @@
+// Package filestorage предоставляет файловое хранилище для метрик.
+// Реализует интерфейс Storager с использованием JSON файлов для постоянного
+// хранения метрик с возможностью загрузки и сохранения.
 package filestorage
 
 import (
@@ -15,7 +18,7 @@ type Storage struct {
 	file *os.File
 }
 
-// New - конструктор для Storage.
+// New создает новое файловое хранилище для метрик.
 func New(cfg *sconfig.Config) (*Storage, error) {
 	file, err := os.OpenFile(cfg.FileStoragePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -30,14 +33,14 @@ func New(cfg *sconfig.Config) (*Storage, error) {
 	return s, nil
 }
 
-// Close - завершить работу с файловым хранилищем.
+// Close завершает работу с файловым хранилищем.
 func (s *Storage) Close() {
 	if s.file != nil {
 		s.file.Close()
 	}
 }
 
-// SaveToFile - сохранить метрики в файл.
+// SaveToFile сохраняет метрики в файл.
 func (s *Storage) SaveToFile(metrics map[string]*model.Metric) error {
 	if err := s.file.Truncate(0); err != nil {
 		return err
@@ -53,7 +56,7 @@ func (s *Storage) SaveToFile(metrics map[string]*model.Metric) error {
 	return nil
 }
 
-// LoadDump - загрузить сохраненные метрики в память.
+// LoadDump загружает сохраненные метрики в память.
 func (s *Storage) LoadDump(metrics map[string]*model.Metric) error {
 	if err := json.NewDecoder(s.file).Decode(&metrics); err != nil {
 		if err != io.EOF {

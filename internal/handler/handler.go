@@ -1,3 +1,6 @@
+// Package handler предоставляет HTTP обработчики для сервера метрик.
+// Реализует Chi роутер с эндпоинтами для получения, хранения и извлечения метрик.
+// Пакет поддерживает JSON и URL-encoded форматы запросов, а также gzip сжатие ответов.
 package handler
 
 import (
@@ -7,17 +10,21 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/iamamatkazin/metrics.git/internal/model"
 	"github.com/iamamatkazin/metrics.git/internal/observer"
+	"github.com/iamamatkazin/metrics.git/internal/pool"
 	"github.com/iamamatkazin/metrics.git/internal/repository"
 	sconfig "github.com/iamamatkazin/metrics.git/pkg/config/server"
 )
 
 // Handler - главная структура приложения.
+// generate:reset
 type Handler struct {
-	storage repository.Storager
-	Router  *chi.Mux
-	cfg     *sconfig.Config
-	audit   *observer.Event
+	storage     repository.Storager
+	Router      *chi.Mux
+	cfg         *sconfig.Config
+	audit       *observer.Event
+	poolMessage *pool.Pool[*model.Message]
 }
 
 // New - конструктор для Handler.
@@ -36,6 +43,9 @@ func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 		storage: storage,
 		cfg:     cfg,
 		audit:   audit,
+		poolMessage: pool.New(func() *model.Message {
+			return &model.Message{}
+		}),
 	}
 
 	h.Router = chi.NewRouter()
@@ -57,12 +67,12 @@ func (h *Handler) listRoute() {
 	h.Router.With(middleware.AllowContentType("application/json")).Post("/update/", h.updateMetricJSON)
 	h.Router.With(middleware.AllowContentType("application/json")).Post("/updates/", h.updatesMetricJSON)
 
-	h.Router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+	h.Router.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(http.StatusText(http.StatusNotFound)))
 	})
 
-	h.Router.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
+	h.Router.MethodNotAllowed(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
 	})
@@ -98,7 +108,7 @@ func writeHTML(w http.ResponseWriter, status int, html string) {
 	}
 }
 
-// Shutdown - коррктное завершение сервиса.
+// Shutdown - коректное завершение сервиса.
 func (h *Handler) Shutdown() {
 	h.storage.Shutdown()
 }

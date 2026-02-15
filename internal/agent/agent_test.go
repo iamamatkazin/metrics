@@ -9,9 +9,9 @@ import (
 
 // mockClient реализует интерфейс Post для тестирования
 type mockClient struct {
+	err             error
 	lastURL         string
 	lastContentType string
-	err             error
 }
 
 func (m *mockClient) Post(ctx context.Context, url, contentType string, data any) error {
@@ -25,9 +25,9 @@ func TestNew(t *testing.T) {
 		cfg *agent.Config
 	}
 	tests := []struct {
-		name string
-		args args
 		want *Agent
+		args args
+		name string
 	}{
 		{
 			name: "Test 1",

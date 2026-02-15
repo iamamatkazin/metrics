@@ -7,7 +7,7 @@ import (
 
 func ExampleHandler_listMetrics() {
 	// получаем список метрик
-	list := h.storage.ListMetrics()
+	list := hand.storage.ListMetrics()
 
 	var li string
 	for range list {
@@ -28,5 +28,5 @@ func ExampleHandler_listMetrics() {
 	</html>`, li)
 
 	// отсылаем ответ
-	writeHTML(w, http.StatusOK, html)
+	writeHTML(rw, http.StatusOK, html)
 }

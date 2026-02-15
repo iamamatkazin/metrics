@@ -24,19 +24,19 @@ func (e *errorWriter) Header() http.Header {
 	return e.header
 }
 
-func (e *errorWriter) Write([]byte) (int, error) {
+func (*errorWriter) Write([]byte) (int, error) {
 	return 0, fmt.Errorf("error")
 }
 
-func (e *errorWriter) WriteHeader(statusCode int) {
+func (*errorWriter) WriteHeader(_ int) {
 	// заглушка
 }
 
 func Test_writeHTML(t *testing.T) {
 	type args struct {
 		w      http.ResponseWriter
-		status int
 		html   string
+		status int
 	}
 	tests := []struct {
 		name string
@@ -58,7 +58,7 @@ func Test_writeHTML(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			writeHTML(tt.args.w, tt.args.status, tt.args.html)
 		})
 	}
@@ -70,9 +70,9 @@ func TestNew(t *testing.T) {
 		cfg *sconfig.Config
 	}
 	tests := []struct {
-		name    string
-		args    args
 		want    *Handler
+		args    args
+		name    string
 		wantErr bool
 	}{
 		{
@@ -98,8 +98,8 @@ func TestNew(t *testing.T) {
 func Test_writeJSON(t *testing.T) {
 	type args struct {
 		w      http.ResponseWriter
-		status int
 		body   []byte
+		status int
 	}
 	tests := []struct {
 		name string
@@ -121,7 +121,7 @@ func Test_writeJSON(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			writeJSON(tt.args.w, tt.args.status, tt.args.body)
 		})
 	}
@@ -130,8 +130,8 @@ func Test_writeJSON(t *testing.T) {
 func Test_writeText(t *testing.T) {
 	type args struct {
 		w       http.ResponseWriter
-		status  int
 		message string
+		status  int
 	}
 	tests := []struct {
 		name string
@@ -153,7 +153,7 @@ func Test_writeText(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			writeText(tt.args.w, tt.args.status, tt.args.message)
 		})
 	}
@@ -161,14 +161,14 @@ func Test_writeText(t *testing.T) {
 
 func TestHandler_listRoute(t *testing.T) {
 	type fields struct {
-		storage repository.Storager
 		Router  *chi.Mux
 		cfg     *sconfig.Config
+		storage repository.Storager
 	}
 	tests := []struct {
+		fields  fields
 		name    string
 		request string
-		fields  fields
 	}{
 		{
 			name:    "Test 1",
@@ -180,7 +180,7 @@ func TestHandler_listRoute(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			r := httptest.NewRequest(http.MethodPost, tt.request, nil)
 			w := httptest.NewRecorder()
 

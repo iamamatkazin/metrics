@@ -1,3 +1,9 @@
+// Package main реализует агент сбора и отправки системных метрик.
+// Агент представляет собой фоновую службу, которая периодически опрашивает
+// системные метрики (CPU, память, GC статистика) и отправляет их на сервер
+// сбора метрик через HTTP. Агент автоматически запускает два воркера:
+//  1. Воркер сбора метрик - опрашивает систему с заданным интервалом
+//  2. Воркер отправки метрик - отправляет собранные данные на сервер
 package main
 
 import (
@@ -11,23 +17,50 @@ import (
 	"syscall"
 
 	"github.com/iamamatkazin/metrics.git/internal/agent"
+	"github.com/iamamatkazin/metrics.git/internal/common"
 	aconfig "github.com/iamamatkazin/metrics.git/pkg/config/agent"
 )
 
-// main - точка входа в сервис Агент.
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
+// main - точка входа в приложение агента.
+// Функция инициализирует конфигурацию, создает экземпляр агента
+// и запускает фоновые процессы сбора и отправки метрик.
 func main() {
+	common.PrintBuild(buildVersion, buildDate, buildCommit)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	cfg, err := aconfig.New()
 	if err != nil {
 		slog.Error("Ошибка чтения конфигурации:", slog.Any("error", err))
-		os.Exit(2)
+		return
 	}
+
+	serverPprof := &http.Server{
+		Addr:    ":7171",
+		Handler: nil,
+	}
+
+	go func() {
+		slog.Info("Запуск сервера профилирования")
+		if err := serverPprof.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Ошибка запуска сервера профилирования:", slog.Any("error", err))
+		}
+	}()
 
 	go func() {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+		if err := serverPprof.Shutdown(ctx); err != nil {
+			slog.Error("Ошибка остановки сервера профилирования:", slog.Any("error", err))
+		}
 
 		<-quit
 		slog.Info("Начало остановки агента...")
@@ -52,8 +85,6 @@ func main() {
 			a.Worker()
 		}
 	}()
-
-	go http.ListenAndServe(":7171", nil)
 
 	wg.Wait()
 

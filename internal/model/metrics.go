@@ -11,10 +11,11 @@ const (
 )
 
 // NOTE: Не усложняем пример, вводя иерархическую вложенность структур.
-// Органичиваясь плоской моделью.
+// Ограничиваясь плоской моделью.
 // Delta и Value объявлены через указатели,
-// что бы отличать значение "0", от не заданного значения
+// чтобы отличать значение "0" от незаданного значения
 // и соответственно не кодировать в структуру.
+// generate:reset
 type Metric struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`
@@ -23,7 +24,7 @@ type Metric struct {
 	Hash  string   `json:"-"`
 }
 
-// Validate - валидация структуры метрик.
+// Validate выполняет валидацию структуры метрик.
 func (m *Metric) Validate() error {
 	if m.MType != Gauge && m.MType != Counter {
 		return fmt.Errorf("неизвестный тип метрики: %s", m.MType)
@@ -32,7 +33,7 @@ func (m *Metric) Validate() error {
 	return nil
 }
 
-// ValidateJSON - валидация структуры метрик в формате json.
+// ValidateJSON выполняет валидацию структуры метрик в формате JSON.
 func (m *Metric) ValidateJSON() error {
 	if m.MType != Gauge && m.MType != Counter {
 		return fmt.Errorf("неизвестный тип метрики: %s", m.MType)
@@ -49,7 +50,7 @@ func (m *Metric) ValidateJSON() error {
 	return nil
 }
 
-// Normalize - нормализация полей со значениями метрики.
+// Normalize выполняет нормализацию полей со значениями метрики.
 func (m *Metric) Normalize(val string) error {
 	if m.MType == Gauge {
 		value, err := strconv.ParseFloat(val, 64)
