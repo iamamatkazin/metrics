@@ -14,6 +14,7 @@ import (
 type Config struct {
 	Address        string `env:"ADDRESS"`
 	Key            string `env:"KEY"`
+	CryptoKey      string `env:"CRYPTO_KEY"`
 	Timeout        time.Duration
 	PollInterval   int `env:"POLL_INTERVAL"`
 	ReportInterval int `env:"REPORT_INTERVAL"`
@@ -28,6 +29,7 @@ func New() (*Config, error) {
 	pool := flag.Int("p", 1, "частота опроса метрик")
 	key := flag.String("k", "", "ключ подписи данных")
 	rateLimit := flag.Int("l", 10, "количество одновременно исходящих запросов на сервер")
+	cryptoKey := flag.String("crypto-key", "", "путь до файла с публичным ключом")
 	flag.Parse()
 
 	cfg := &Config{
@@ -37,6 +39,7 @@ func New() (*Config, error) {
 		PollInterval:   *pool,
 		ReportInterval: *report,
 		RateLimit:      *rateLimit,
+		CryptoKey:      *cryptoKey,
 	}
 
 	if err := env.Parse(cfg); err != nil {

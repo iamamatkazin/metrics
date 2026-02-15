@@ -6,7 +6,6 @@ package http
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,7 +16,7 @@ import (
 
 // Clienter - интерфейс отправки HTTP запросов.
 type Clienter interface {
-	Post(ctx context.Context, url, contentType, key string, data any) (err error)
+	Post(ctx context.Context, url, contentType, key string, data []byte) (err error)
 }
 
 // Client - структура реализации кастомного HTTP клиента.
@@ -38,21 +37,15 @@ func New(timeout time.Duration) *Client {
 // Post отправляет HTTP POST запрос с метриками на сервер.
 // Поддерживает повторные попытки при временных сбоях и автоматически
 // добавляет HMAC-SHA256 подпись если указан ключ.
-func (c *Client) Post(ctx context.Context, url, contentType, key string, data any) (err error) {
+func (c *Client) Post(ctx context.Context, url, contentType, key string, data []byte) (err error) {
 	var (
 		request *http.Request
-		body    []byte
 	)
 
 	if data == nil {
 		request, err = newRequestWithContext(ctx, http.MethodPost, url, http.NoBody)
 	} else {
-		body, err = json.Marshal(data)
-		if err != nil {
-			return err
-		}
-
-		request, err = newRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		request, err = newRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
 	}
 	if err != nil {
 		return err
@@ -61,7 +54,7 @@ func (c *Client) Post(ctx context.Context, url, contentType, key string, data an
 	// В заголовках запроса сообщаем, что данные кодированы стандартной URL-схемой
 	request.Header.Set("Content-Type", contentType)
 	if key != "" {
-		request.Header.Set("HashSHA256", common.CalcSign([]byte(key), body))
+		request.Header.Set("HashSHA256", common.CalcSign([]byte(key), data))
 	}
 
 	// Отправляем запрос и получаем ответ

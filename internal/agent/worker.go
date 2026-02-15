@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"log/slog"
+
+	"github.com/iamamatkazin/metrics.git/cmd/crypto"
 )
 
 // Worker обрабатывает очередь задач отправки метрик на сервер.
@@ -13,7 +15,19 @@ func (a *Agent) Worker() {
 			ctx, cancel := context.WithTimeout(context.Background(), a.cfg.Timeout)
 			defer cancel()
 
-			if err := a.client.Post(ctx, job.url, job.contentType, a.cfg.Key, job.metric); err != nil {
+			var (
+				data []byte
+				err  error
+			)
+
+			if job.metric != nil {
+				if data, err = crypto.Encrypt(a.cfg.CryptoKey, job.metric); err != nil {
+					slog.Error("Ошибка шифрования метрик:", slog.Any("error", err))
+					return
+				}
+			}
+
+			if err = a.client.Post(ctx, job.url, job.contentType, a.cfg.Key, data); err != nil {
 				slog.Error("Ошибка отправки метрик на сервер:", slog.Any("error", err))
 			}
 		}()

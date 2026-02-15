@@ -18,6 +18,7 @@ type Config struct {
 	Key             string `env:"KEY"`
 	FileAudit       string `env:"AUDIT_FILE"`
 	URLAudit        string `env:"AUDIT_URL"`
+	CryptoKey       string `env:"CRYPTO_KEY"`
 	Timeout         time.Duration
 	StoreInterval   int  `env:"STORE_INTERVAL"`
 	Restore         bool `env:"RESTORE"`
@@ -30,11 +31,11 @@ func New() (*Config, error) {
 	interval := flag.Int("i", 300, "интервал времени в секундах, по истечении которого текущие показания сервера сохраняются на диск")
 	path := flag.String("f", "./storage.json", "путь до файла, куда сохраняются текущие значения")
 	restore := flag.Bool("r", true, "булево значение (true/false), определяющее, следует ли загружать ранее сохранённые значения из указанного файла при старте сервера")
-	database := flag.String("d", "", "строка с адресом подключения к БД") // host=localhost user=postgres password=postgres dbname=metrics sslmode=disable
+	database := flag.String("d", "", "строка с адресом подключения к БД")
 	key := flag.String("k", "", "ключ подписи данных")
 	fileAudit := flag.String("audit-file", "", "путь к файлу, в который сохраняются логи аудита")
 	urlAudit := flag.String("audit-url", "", "полный URL, по которому отправляются логи аудита")
-
+	cryptoKey := flag.String("crypto-key", "", "путь до файла с приватным ключом")
 	flag.Parse()
 
 	cfg := &Config{
@@ -47,6 +48,7 @@ func New() (*Config, error) {
 		FileAudit:       *fileAudit,
 		URLAudit:        *urlAudit,
 		Timeout:         time.Second * 10,
+		CryptoKey:       *cryptoKey,
 	}
 
 	if err := env.Parse(cfg); err != nil {
