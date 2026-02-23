@@ -80,7 +80,7 @@ func New() (*Config, error) {
 		cfg.CryptoKey = *cryptoKey
 	}
 
-	if err := env.Parse(cfg); err != nil {
+	if err := env.Parse(&cfg); err != nil {
 		return nil, err
 	}
 

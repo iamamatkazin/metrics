@@ -31,7 +31,7 @@ var (
 func main() {
 	common.PrintBuild(buildVersion, buildDate, buildCommit)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	cfg, err := sconfig.New()
@@ -56,9 +56,6 @@ func main() {
 		Handler: nil,
 	}
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-
 	exit := make(chan struct{})
 
 	go func() {
@@ -78,7 +75,7 @@ func main() {
 	}()
 
 	select {
-	case <-quit:
+	case <-ctx.Done():
 		app.Shutdown()
 
 		if err := server.Shutdown(ctx); err != nil {
@@ -88,8 +85,6 @@ func main() {
 		if err := serverPprof.Shutdown(ctx); err != nil {
 			slog.Error("Ошибка остановки сервера профилирования:", slog.Any("error", err))
 		}
-
-		cancel()
 
 	case <-exit:
 		return
