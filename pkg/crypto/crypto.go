@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"os"
 )
 
@@ -90,6 +91,10 @@ func getPemBlock(path string) (*pem.Block, error) {
 	}
 
 	pemBlock, _ := pem.Decode(keyBytes)
+
+	if pemBlock == nil {
+		return nil, errors.New("ошибка декодирования ключа, функция вернула nil")
+	}
 
 	return pemBlock, nil
 }

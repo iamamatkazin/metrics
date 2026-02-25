@@ -34,6 +34,18 @@ func New() (*Config, error) {
 	var cfg Config
 
 	config := flag.String("config", "", "конфигурация сервера с помощью файла в формате JSON")
+	address := flag.String("a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
+	interval := flag.Int("i", 300, "интервал времени в секундах, по истечении которого текущие показания сервера сохраняются на диск")
+	path := flag.String("f", "./storage.json", "путь до файла, куда сохраняются текущие значения")
+	restore := flag.Bool("r", true, "булево значение (true/false), определяющее, следует ли загружать ранее сохранённые значения из указанного файла при старте сервера")
+	database := flag.String("d", "", "строка с адресом подключения к БД")
+	key := flag.String("k", "", "ключ подписи данных")
+	fileAudit := flag.String("audit-file", "", "путь к файлу, в который сохраняются логи аудита")
+	urlAudit := flag.String("audit-url", "", "полный URL, по которому отправляются логи аудита")
+	cryptoKey := flag.String("crypto-key", "", "путь до файла с приватным ключом")
+
+	flag.Parse()
+
 	if *config != "" {
 		data, err := os.ReadFile(*config)
 		if err != nil {
@@ -45,17 +57,6 @@ func New() (*Config, error) {
 			}
 		}
 	}
-
-	address := flag.String("a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
-	interval := flag.Int("i", 300, "интервал времени в секундах, по истечении которого текущие показания сервера сохраняются на диск")
-	path := flag.String("f", "./storage.json", "путь до файла, куда сохраняются текущие значения")
-	restore := flag.Bool("r", true, "булево значение (true/false), определяющее, следует ли загружать ранее сохранённые значения из указанного файла при старте сервера")
-	database := flag.String("d", "", "строка с адресом подключения к БД")
-	key := flag.String("k", "", "ключ подписи данных")
-	fileAudit := flag.String("audit-file", "", "путь к файлу, в который сохраняются логи аудита")
-	urlAudit := flag.String("audit-url", "", "полный URL, по которому отправляются логи аудита")
-	cryptoKey := flag.String("crypto-key", "", "путь до файла с приватным ключом")
-	flag.Parse()
 
 	cfg.Address = *address
 	cfg.StoreInterval = *interval

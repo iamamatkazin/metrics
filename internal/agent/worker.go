@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/iamamatkazin/metrics.git/cmd/crypto"
+	"github.com/iamamatkazin/metrics.git/pkg/crypto"
 )
 
 // Worker обрабатывает очередь задач отправки метрик на сервер.

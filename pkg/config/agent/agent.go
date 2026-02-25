@@ -31,6 +31,15 @@ func New() (*Config, error) {
 	var cfg Config
 
 	config := flag.String("config", "", "конфигурация агента с помощью файла в формате JSON")
+	address := flag.String("a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
+	report := flag.Int("r", 1, "частота отправки метрик на сервер")
+	pool := flag.Int("p", 1, "частота опроса метрик")
+	key := flag.String("k", "", "ключ подписи данных")
+	rateLimit := flag.Int("l", 10, "количество одновременно исходящих запросов на сервер")
+	cryptoKey := flag.String("crypto-key", "", "путь до файла с публичным ключом")
+
+	flag.Parse()
+
 	if *config != "" {
 		data, err := os.ReadFile(*config)
 		if err != nil {
@@ -42,14 +51,6 @@ func New() (*Config, error) {
 			}
 		}
 	}
-
-	address := flag.String("a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
-	report := flag.Int("r", 1, "частота отправки метрик на сервер")
-	pool := flag.Int("p", 1, "частота опроса метрик")
-	key := flag.String("k", "", "ключ подписи данных")
-	rateLimit := flag.Int("l", 10, "количество одновременно исходящих запросов на сервер")
-	cryptoKey := flag.String("crypto-key", "", "путь до файла с публичным ключом")
-	flag.Parse()
 
 	cfg.Address = *address
 	cfg.Timeout = time.Second * 10

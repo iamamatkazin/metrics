@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/iamamatkazin/metrics.git/cmd/crypto"
 	"github.com/iamamatkazin/metrics.git/internal/common"
 	"github.com/iamamatkazin/metrics.git/internal/model"
+	"github.com/iamamatkazin/metrics.git/pkg/crypto"
 )
 
 // updateMetric сохраняет метрику из строки запроса.
