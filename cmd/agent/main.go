@@ -33,7 +33,7 @@ var (
 func main() {
 	common.PrintBuild(buildVersion, buildDate, buildCommit)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	cfg, err := aconfig.New()
@@ -55,16 +55,12 @@ func main() {
 	}()
 
 	go func() {
-		quit := make(chan os.Signal, 1)
-		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-
 		if err := serverPprof.Shutdown(ctx); err != nil {
 			slog.Error("Ошибка остановки сервера профилирования:", slog.Any("error", err))
 		}
 
-		<-quit
+		<-ctx.Done()
 		slog.Info("Начало остановки агента...")
-		cancel()
 	}()
 
 	a := agent.New(cfg)

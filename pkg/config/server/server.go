@@ -4,7 +4,10 @@
 package server
 
 import (
+	"encoding/json"
 	"flag"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -12,46 +15,75 @@ import (
 
 // Config - структура конфигурации сервера.
 type Config struct {
-	Address         string `env:"ADDRESS"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	DatabaseDSN     string `env:"DATABASE_DSN"`
-	Key             string `env:"KEY"`
-	FileAudit       string `env:"AUDIT_FILE"`
-	URLAudit        string `env:"AUDIT_URL"`
+	Address         string `json:"address" env:"ADDRESS"`
+	FileStoragePath string `json:"file_storage_path" env:"FILE_STORAGE_PATH"`
+	DatabaseDSN     string `json:"database_dsn" env:"DATABASE_DSN"`
+	Key             string `json:"key" env:"KEY"`
+	FileAudit       string `json:"audit_file" env:"AUDIT_FILE"`
+	URLAudit        string `json:"audit_url" env:"AUDIT_URL"`
+	CryptoKey       string `json:"crypto_key" env:"CRYPTO_KEY"`
+	FileConfig      string `env:"CONFIG"`
 	Timeout         time.Duration
-	StoreInterval   int  `env:"STORE_INTERVAL"`
-	Restore         bool `env:"RESTORE"`
+	StoreInterval   int  `json:"store_interval" env:"STORE_INTERVAL"`
+	Restore         bool `json:"restore" env:"RESTORE"`
 }
 
 // New создает новую конфигурацию сервера с настройками по умолчанию.
 // Параметры могут быть переопределены через флаги командной строки и переменные окружения.
 func New() (*Config, error) {
+	var cfg Config
+
+	config := flag.String("config", "", "конфигурация сервера с помощью файла в формате JSON")
 	address := flag.String("a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
 	interval := flag.Int("i", 300, "интервал времени в секундах, по истечении которого текущие показания сервера сохраняются на диск")
 	path := flag.String("f", "./storage.json", "путь до файла, куда сохраняются текущие значения")
 	restore := flag.Bool("r", true, "булево значение (true/false), определяющее, следует ли загружать ранее сохранённые значения из указанного файла при старте сервера")
-	database := flag.String("d", "", "строка с адресом подключения к БД") // host=localhost user=postgres password=postgres dbname=metrics sslmode=disable
+	database := flag.String("d", "", "строка с адресом подключения к БД")
 	key := flag.String("k", "", "ключ подписи данных")
 	fileAudit := flag.String("audit-file", "", "путь к файлу, в который сохраняются логи аудита")
 	urlAudit := flag.String("audit-url", "", "полный URL, по которому отправляются логи аудита")
+	cryptoKey := flag.String("crypto-key", "", "путь до файла с приватным ключом")
 
 	flag.Parse()
 
-	cfg := &Config{
-		Address:         *address,
-		StoreInterval:   *interval,
-		FileStoragePath: *path,
-		Key:             *key,
-		Restore:         *restore,
-		DatabaseDSN:     *database,
-		FileAudit:       *fileAudit,
-		URLAudit:        *urlAudit,
-		Timeout:         time.Second * 10,
+	if *config != "" {
+		data, err := os.ReadFile(*config)
+		if err != nil {
+			slog.Error("ошибка чтения файла конфигурации:", slog.Any("error", err))
+		} else {
+			err = json.Unmarshal(data, &cfg)
+			if err != nil {
+				slog.Error("ошибка парсинга файла конфигурации:", slog.Any("error", err))
+			}
+		}
 	}
 
-	if err := env.Parse(cfg); err != nil {
+	cfg.Address = *address
+	cfg.StoreInterval = *interval
+	cfg.FileStoragePath = *path
+	cfg.Key = *key
+	cfg.Restore = *restore
+	cfg.Timeout = time.Second * 10
+
+	if *database != "" {
+		cfg.DatabaseDSN = *database
+	}
+
+	if *fileAudit != "" {
+		cfg.FileAudit = *fileAudit
+	}
+
+	if *urlAudit != "" {
+		cfg.URLAudit = *urlAudit
+	}
+
+	if *cryptoKey != "" {
+		cfg.CryptoKey = *cryptoKey
+	}
+
+	if err := env.Parse(&cfg); err != nil {
 		return nil, err
 	}
 
-	return cfg, nil
+	return &cfg, nil
 }

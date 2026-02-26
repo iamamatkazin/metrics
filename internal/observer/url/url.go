@@ -5,6 +5,7 @@ package url
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 
 	"github.com/iamamatkazin/metrics.git/internal/model"
@@ -30,7 +31,13 @@ func New(cfg *sconfig.Config, id string) *Subscriber {
 
 // Send отправляет данные аудита во внешний сервис.
 func (s *Subscriber) Send(mes model.Message) {
-	if err := s.client.Post(context.Background(), s.cfg.URLAudit, "application/json", "", mes); err != nil {
+	byteMes, err := json.Marshal(mes)
+	if err != nil {
+		slog.Error("Ошибка подготовки логов для отправки в сервис логирования:", slog.Any("error", err))
+		return
+	}
+
+	if err := s.client.Post(context.Background(), s.cfg.URLAudit, "application/json", "", byteMes); err != nil {
 		slog.Error("Ошибка отправки логов в сервис логирования:", slog.Any("error", err))
 	}
 }

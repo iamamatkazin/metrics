@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/iamamatkazin/metrics.git/internal/common"
 	"github.com/iamamatkazin/metrics.git/internal/model"
+	"github.com/iamamatkazin/metrics.git/pkg/crypto"
 )
 
 // updateMetric сохраняет метрику из строки запроса.
@@ -44,8 +46,14 @@ func (h *Handler) updateMetric(w http.ResponseWriter, r *http.Request) {
 
 // updateMetricJSON сохраняет метрику из тела запроса в формате JSON.
 func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
+	decodeBody, err := getDecodeBody(r, h.cfg.CryptoKey)
+	if err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	var metric model.Metric
-	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+	if err := json.Unmarshal(decodeBody, &metric); err != nil {
 		writeText(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -70,8 +78,14 @@ func (h *Handler) updateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 // updatesMetricJSON сохраняет массив метрик из тела запроса в формате JSON.
 func (h *Handler) updatesMetricJSON(w http.ResponseWriter, r *http.Request) {
+	decodeBody, err := getDecodeBody(r, h.cfg.CryptoKey)
+	if err != nil {
+		writeText(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	var metrics []model.Metric
-	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
+	if err := json.Unmarshal(decodeBody, &metrics); err != nil {
 		writeText(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -132,4 +146,19 @@ func (h *Handler) getMessage(list []model.Metric, ip string) *model.Message {
 	message.IP = ip
 
 	return message
+}
+
+func getDecodeBody(r *http.Request, cryptoKey string) ([]byte, error) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+
+	decodeBody, err := crypto.Decrypt(cryptoKey, body)
+	if err != nil {
+		return nil, err
+	}
+
+	return decodeBody, nil
 }
