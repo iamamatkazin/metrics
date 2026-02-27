@@ -2,7 +2,9 @@ package handler
 
 import (
 	"compress/gzip"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -50,5 +52,22 @@ func middlewareGzip(next http.Handler) http.Handler {
 
 		w.Header().Set("Content-Encoding", "gzip")
 		next.ServeHTTP(gzw, r)
+	})
+}
+
+// middlewareRealIP проверка доверенной подсети.
+func (h *Handler) middlewareRealIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// смотрим заголовок запроса X-Real-IP
+		ipStr := r.Header.Get("X-Real-IP")
+		// парсим ip
+		ip := net.ParseIP(ipStr)
+		if ip == nil || ip.String() != h.cfg.TrustedSubnet {
+			fmt.Println(ip.String(), h.cfg.TrustedSubnet)
+			writeText(w, http.StatusForbidden, "IP-адрес агента не входит в доверенную подсеть")
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }

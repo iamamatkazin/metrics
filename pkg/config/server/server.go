@@ -23,6 +23,7 @@ type Config struct {
 	URLAudit        string `json:"audit_url" env:"AUDIT_URL"`
 	CryptoKey       string `json:"crypto_key" env:"CRYPTO_KEY"`
 	FileConfig      string `env:"CONFIG"`
+	TrustedSubnet   string `json:"trusted_subnet" env:"TRUSTED_SUBNET"`
 	Timeout         time.Duration
 	StoreInterval   int  `json:"store_interval" env:"STORE_INTERVAL"`
 	Restore         bool `json:"restore" env:"RESTORE"`
@@ -43,6 +44,7 @@ func New() (*Config, error) {
 	fileAudit := flag.String("audit-file", "", "путь к файлу, в который сохраняются логи аудита")
 	urlAudit := flag.String("audit-url", "", "полный URL, по которому отправляются логи аудита")
 	cryptoKey := flag.String("crypto-key", "", "путь до файла с приватным ключом")
+	trustedSubnet := flag.String("trusted_subnet", "192.168.1.18", "содержит строковое представление бесклассовой адресации (CIDR).")
 
 	flag.Parse()
 
@@ -64,6 +66,7 @@ func New() (*Config, error) {
 	cfg.Key = *key
 	cfg.Restore = *restore
 	cfg.Timeout = time.Second * 10
+	cfg.TrustedSubnet = *trustedSubnet
 
 	if *database != "" {
 		cfg.DatabaseDSN = *database
