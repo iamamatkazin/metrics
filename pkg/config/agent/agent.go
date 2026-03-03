@@ -23,6 +23,7 @@ type Config struct {
 	PollInterval   int `json:"poll_interval" env:"POLL_INTERVAL"`
 	ReportInterval int `json:"report_interval" env:"REPORT_INTERVAL"`
 	RateLimit      int `json:"rate_limit" env:"RATE_LIMIT"`
+	GrpcPort       int `json:"grpc_port" env:"GRPC_PORT"`
 }
 
 // New создает новую конфигурацию агента с настройками по умолчанию.
@@ -37,6 +38,7 @@ func New() (*Config, error) {
 	key := flag.String("k", "", "ключ подписи данных")
 	rateLimit := flag.Int("l", 10, "количество одновременно исходящих запросов на сервер")
 	cryptoKey := flag.String("crypto-key", "", "путь до файла с публичным ключом")
+	grpcPort := flag.Int("g", 3200, "порт grpc сервера")
 
 	flag.Parse()
 
@@ -57,6 +59,7 @@ func New() (*Config, error) {
 	cfg.PollInterval = *pool
 	cfg.ReportInterval = *report
 	cfg.RateLimit = *rateLimit
+	cfg.GrpcPort = *grpcPort
 
 	if *key != "" {
 		cfg.Key = *key

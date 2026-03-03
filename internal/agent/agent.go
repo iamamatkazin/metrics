@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iamamatkazin/metrics.git/internal/grpc/client"
 	"github.com/iamamatkazin/metrics.git/internal/model"
 	"github.com/iamamatkazin/metrics.git/pkg/config/agent"
 	pkghttp "github.com/iamamatkazin/metrics.git/pkg/http"
@@ -29,21 +30,29 @@ type Agent struct {
 	cfg     *agent.Config
 	metrics map[string]map[string]float64
 	jobs    chan request
+	grpc    *client.Metrics
 	sync.RWMutex
 }
 
 // New создает новый экземпляр агента с заданной конфигурацией.
 // Агент начнет сбор метрик согласно настройкам конфигурации.
-func New(cfg *agent.Config) *Agent {
+func New(cfg *agent.Config) (*Agent, error) {
 	slog.Info("Запуск агента")
+
+	grpc, err := client.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	a := &Agent{
 		cfg:     cfg,
 		client:  pkghttp.New(cfg.Timeout),
 		metrics: createMetrics(),
 		jobs:    make(chan request, 100),
+		grpc:    grpc,
 	}
 
-	return a
+	return a, nil
 }
 
 // Start запускает процесс сбора и отправки метрик.
@@ -119,9 +128,25 @@ func (a *Agent) sendMetricsBatch() {
 	default:
 		slog.Info("Нет свободного канала для обработки списка метрик.")
 	}
+
+	if err := a.sendMetricsForGrpc(list); err != nil {
+		slog.Error("Ошибка отправка метрик через grpc:", slog.Any("error", err))
+	}
+}
+
+func (a *Agent) sendMetricsForGrpc(list []model.Metric) error {
+	ctx, cancel := context.WithTimeout(context.Background(), a.cfg.Timeout)
+	defer cancel()
+
+	if err := a.grpc.UpdateMetrics(ctx, list); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Shutdown коректно останавливает агента и закрывает канал jobs.
 func (a *Agent) Shutdown() {
 	close(a.jobs)
+	a.grpc.Close()
 }

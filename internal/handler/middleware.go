@@ -2,7 +2,6 @@ package handler
 
 import (
 	"compress/gzip"
-	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -63,7 +62,6 @@ func (h *Handler) middlewareRealIP(next http.Handler) http.Handler {
 		// парсим ip
 		ip := net.ParseIP(ipStr)
 		if ip == nil || ip.String() != h.cfg.TrustedSubnet {
-			fmt.Println(ip.String(), h.cfg.TrustedSubnet)
 			writeText(w, http.StatusForbidden, "IP-адрес агента не входит в доверенную подсеть")
 			return
 		}

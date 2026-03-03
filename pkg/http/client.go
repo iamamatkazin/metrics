@@ -35,7 +35,7 @@ func New(timeout time.Duration) *Client {
 			Timeout:   timeout,
 			Transport: &http.Transport{},
 		},
-		ip: getIPAdress(),
+		ip: GetIPAdress(),
 	}
 }
 
@@ -107,7 +107,7 @@ func newRequestWithContext(ctx context.Context, method, url string, body io.Read
 	}
 }
 
-func getIPAdress() string {
+func GetIPAdress() string {
 	host, err := os.Hostname()
 	if err != nil {
 		slog.Error("Ошибка получения имени хоста:", slog.Any("error", err))
@@ -121,7 +121,16 @@ func getIPAdress() string {
 	}
 
 	for _, addr := range addrs {
-		return addr.To4().String()
+		ip4 := addr.To4()
+		if ip4 == nil {
+			continue
+		}
+
+		if addr.IsLoopback() {
+			continue
+		}
+
+		return ip4.String()
 	}
 
 	return ""

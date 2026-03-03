@@ -26,6 +26,7 @@ type Config struct {
 	TrustedSubnet   string `json:"trusted_subnet" env:"TRUSTED_SUBNET"`
 	Timeout         time.Duration
 	StoreInterval   int  `json:"store_interval" env:"STORE_INTERVAL"`
+	GrpcPort        int  `json:"grpc_port" env:"GRPC_PORT"`
 	Restore         bool `json:"restore" env:"RESTORE"`
 }
 
@@ -45,6 +46,7 @@ func New() (*Config, error) {
 	urlAudit := flag.String("audit-url", "", "полный URL, по которому отправляются логи аудита")
 	cryptoKey := flag.String("crypto-key", "", "путь до файла с приватным ключом")
 	trustedSubnet := flag.String("trusted_subnet", "192.168.1.18", "содержит строковое представление бесклассовой адресации (CIDR).")
+	grpcPort := flag.Int("g", 3200, "порт grpc сервера")
 
 	flag.Parse()
 
@@ -67,6 +69,7 @@ func New() (*Config, error) {
 	cfg.Restore = *restore
 	cfg.Timeout = time.Second * 10
 	cfg.TrustedSubnet = *trustedSubnet
+	cfg.GrpcPort = *grpcPort
 
 	if *database != "" {
 		cfg.DatabaseDSN = *database
