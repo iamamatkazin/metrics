@@ -45,7 +45,7 @@ func New() (*Config, error) {
 	fileAudit := flag.String("audit-file", "", "путь к файлу, в который сохраняются логи аудита")
 	urlAudit := flag.String("audit-url", "", "полный URL, по которому отправляются логи аудита")
 	cryptoKey := flag.String("crypto-key", "", "путь до файла с приватным ключом")
-	trustedSubnet := flag.String("trusted_subnet", "192.168.1.18", "содержит строковое представление бесклассовой адресации (CIDR).")
+	trustedSubnet := flag.String("trusted_subnet", "192.168.1.0/24", "содержит строковое представление бесклассовой адресации (CIDR).")
 	grpcPort := flag.Int("g", 3200, "порт grpc сервера")
 
 	flag.Parse()

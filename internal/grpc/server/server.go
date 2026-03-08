@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 
+	"github.com/iamamatkazin/metrics.git/internal/common"
 	"github.com/iamamatkazin/metrics.git/internal/grpc/proto"
 	"github.com/iamamatkazin/metrics.git/internal/model"
 	"github.com/iamamatkazin/metrics.git/internal/repository"
@@ -79,7 +80,7 @@ func (s *Metrics) unaryInterceptor(ctx context.Context, req interface{}, _ *grpc
 		}
 	}
 
-	if ipAdress != s.cfg.TrustedSubnet {
+	if !common.CompareIP(ipAdress, s.cfg.TrustedSubnet) {
 		return nil, status.Error(codes.PermissionDenied, "клиент не входит в доверенную сеть")
 	}
 
