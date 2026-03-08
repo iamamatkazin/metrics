@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/iamamatkazin/metrics.git/internal/grpc/server"
 	"github.com/iamamatkazin/metrics.git/internal/model"
 	"github.com/iamamatkazin/metrics.git/internal/observer"
 	"github.com/iamamatkazin/metrics.git/internal/pool"
@@ -25,6 +26,7 @@ type Handler struct {
 	cfg         *sconfig.Config
 	audit       *observer.Event
 	poolMessage *pool.Pool[*model.Message]
+	grpc        *server.Metrics
 }
 
 // New - конструктор для Handler.
@@ -39,10 +41,20 @@ func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 		return nil, err
 	}
 
+	grpc := server.New(storage, cfg)
+
+	go func() {
+		if err = grpc.Run(cfg); err != nil {
+			slog.Error("Ошибка запуска grpc сервера:", slog.Any("error", err))
+			return
+		}
+	}()
+
 	h := &Handler{
 		storage: storage,
 		cfg:     cfg,
 		audit:   audit,
+		grpc:    grpc,
 		poolMessage: pool.New(func() *model.Message {
 			return &model.Message{}
 		}),
@@ -58,6 +70,7 @@ func New(ctx context.Context, cfg *sconfig.Config) (*Handler, error) {
 func (h *Handler) listRoute() {
 	h.Router.Use(middlewareLog)
 	h.Router.Use(middlewareGzip)
+	h.Router.Use(h.middlewareRealIP)
 	h.Router.Get("/ping", h.pingDB)
 	h.Router.Get("/", h.listMetrics)
 	h.Router.Get("/value/{type}/{id}", h.getMetric)

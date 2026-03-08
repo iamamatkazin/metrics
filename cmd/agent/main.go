@@ -63,7 +63,12 @@ func main() {
 		slog.Info("Начало остановки агента...")
 	}()
 
-	a := agent.New(cfg)
+	a, err := agent.New(cfg)
+	if err != nil {
+		slog.Error("Ошибка запуска агента:", slog.Any("error", err))
+		return
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 

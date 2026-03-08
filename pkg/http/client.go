@@ -8,7 +8,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
+	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/iamamatkazin/metrics.git/internal/common"
@@ -22,6 +25,7 @@ type Clienter interface {
 // Client - структура реализации кастомного HTTP клиента.
 type Client struct {
 	*http.Client
+	ip string
 }
 
 // New создает новый экземпляр Client с заданным таймаутом.
@@ -31,6 +35,7 @@ func New(timeout time.Duration) *Client {
 			Timeout:   timeout,
 			Transport: &http.Transport{},
 		},
+		ip: GetIPAdress(),
 	}
 }
 
@@ -53,6 +58,8 @@ func (c *Client) Post(ctx context.Context, url, contentType, key string, data []
 
 	// В заголовках запроса сообщаем, что данные кодированы стандартной URL-схемой
 	request.Header.Set("Content-Type", contentType)
+	request.Header.Set("X-REAL-IP", c.ip)
+
 	if key != "" {
 		request.Header.Set("HashSHA256", common.CalcSign([]byte(key), data))
 	}
@@ -98,4 +105,33 @@ func newRequestWithContext(ctx context.Context, method, url string, body io.Read
 			return request, nil
 		}
 	}
+}
+
+func GetIPAdress() string {
+	host, err := os.Hostname()
+	if err != nil {
+		slog.Error("Ошибка получения имени хоста:", slog.Any("error", err))
+		return ""
+	}
+
+	addrs, err := net.LookupIP(host)
+	if err != nil {
+		slog.Error("Ошибка получения ip адреса:", slog.Any("error", err))
+		return ""
+	}
+
+	for _, addr := range addrs {
+		ip4 := addr.To4()
+		if ip4 == nil {
+			continue
+		}
+
+		if addr.IsLoopback() {
+			continue
+		}
+
+		return ip4.String()
+	}
+
+	return ""
 }

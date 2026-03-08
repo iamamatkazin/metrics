@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/iamamatkazin/metrics.git/internal/common"
 )
 
 // middlewareLog логирует информацию о входящих HTTP запросах.
@@ -50,5 +52,17 @@ func middlewareGzip(next http.Handler) http.Handler {
 
 		w.Header().Set("Content-Encoding", "gzip")
 		next.ServeHTTP(gzw, r)
+	})
+}
+
+// middlewareRealIP проверка доверенной подсети.
+func (h *Handler) middlewareRealIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !common.CompareIP(r.Header.Get("X-Real-IP"), h.cfg.TrustedSubnet) {
+			writeText(w, http.StatusForbidden, "IP-адрес агента не входит в доверенную подсеть")
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
